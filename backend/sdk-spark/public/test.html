@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NexCent SDK — test page (Spark variant)</title>
+  <style>
+    body { font: 15px/1.5 -apple-system, sans-serif; max-width: 760px; margin: 32px auto; padding: 0 16px; color: #0f1217; }
+    h1 { letter-spacing: -0.02em; margin: 0 0 8px; }
+    p { color: #4b5563; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 20px; }
+    button { padding: 9px 14px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-size: 13px; font-weight: 500; }
+    button:hover { background: #f1f5f9; }
+    .status { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+    .log { background: #0f1217; color: #d1d5db; font-family: ui-monospace, Menlo, monospace; font-size: 12px; padding: 12px; border-radius: 8px; min-height: 100px; max-height: 240px; overflow: auto; white-space: pre-wrap; margin-top: 8px; }
+    .ok { color: #047857; }
+  </style>
+</head>
+<body>
+  <h1>NexCent SDK — test page</h1>
+  <p>Spark variant — uses direct Firestore REST API (no Cloud Functions).</p>
+
+  <h3>Reset visitor</h3>
+  <div class="row">
+    <button onclick="localStorage.clear(); sessionStorage.clear(); location.reload()">Reset as new visitor</button>
+    <button onclick="sessionStorage.clear(); location.reload()">Reset session only</button>
+  </div>
+
+  <h3>Simulate exit-intent</h3>
+  <div class="row">
+    <button onclick="history.back()">Press back (mobile exit-intent)</button>
+    <button onclick="Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' }); document.dispatchEvent(new Event('visibilitychange'))">Tab-hidden trigger</button>
+  </div>
+
+  <h3>Health</h3>
+  <div id="health" class="status">Checking…</div>
+
+  <h3>Network log</h3>
+  <div id="log" class="log">Watching for Firestore calls…</div>
+
+  <script>
+    const health = document.getElementById('health');
+    const log = document.getElementById('log');
+    function logLine(msg) { log.textContent += '\n' + new Date().toISOString().slice(11, 19) + '  ' + msg; log.scrollTop = log.scrollHeight; }
+
+    setTimeout(() => {
+      const ok = !!document.querySelector('script[data-project][data-web-key]');
+      health.innerHTML = ok
+        ? '<span class="ok">✓ SDK script tag detected with project + web-key</span>'
+        : '✗ SDK script tag not detected.';
+    }, 1500);
+
+    const origFetch = window.fetch;
+    window.fetch = async function(...args) {
+      const url = String(args[0]);
+      if (url.includes('firestore.googleapis.com')) {
+        const verb = (args[1] && args[1].method) || 'GET';
+        logLine(verb + '  ' + url.replace(/^https:\/\/firestore\.googleapis\.com\/v1\/projects\/[^/]+\/databases\/[^/]+\/documents/, '...').replace(/key=[^&]+/, 'key=***'));
+      }
+      return origFetch.apply(this, args);
+    };
+  </script>
+
+  <script async
+          src="/v1/popup.js"
+          data-project="anveshan-popups"
+          data-web-key="AIzaSyBV1Fs7VRj85SVtYchg8XMX9_2Nqol1LtQ"></script>
+</body>
+</html>

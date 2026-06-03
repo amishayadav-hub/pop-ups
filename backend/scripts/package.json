@@ -1,0 +1,17 @@
+{
+  "name": "nexcent-scripts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "seed": "ts-node seed.ts",
+    "create-admin": "ts-node createAdmin.ts"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}

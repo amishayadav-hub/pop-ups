@@ -1,0 +1,65 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
+    match /popups/{popupId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    match /popupTypes/{typeId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    match /cities/{code} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    match /config/{docId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    match /scoringConfig/{docId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    match /benchmarks/{docId} {
+      allow get, list: if true;
+      allow write: if false;
+    }
+
+    match /metrics/{docId} {
+      allow get, list: if true;
+      allow write: if false;
+    }
+
+    match /events/{eventId} {
+      allow read: if isAdmin();
+      allow create: if
+        request.resource.data.keys().hasAll(['popupId', 'type', 'ts'])
+        && request.resource.data.popupId is string
+        && request.resource.data.popupId.size() < 64
+        && request.resource.data.type in ['impression', 'click', 'convert']
+        && request.resource.data.ts is timestamp;
+      allow update, delete: if false;
+    }
+
+    match /apiKeys/{keyHash} {
+      allow read, write: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if isAdmin();
+    }
+  }
+}

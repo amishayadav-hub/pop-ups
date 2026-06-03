@@ -1,0 +1,88 @@
+# ════════════════════════════════════════════════════════════════════
+# 🚨 CRITICAL — NEVER COMMIT (security)
+# ════════════════════════════════════════════════════════════════════
+**/service-account.json
+**/*-firebase-adminsdk-*.json
+**/*-adminsdk-*.json
+.env
+.env.*
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.local.example
+
+# ════════════════════════════════════════════════════════════════════
+# Dependencies (regenerable via npm install)
+# ════════════════════════════════════════════════════════════════════
+node_modules/
+**/node_modules/
+
+# ════════════════════════════════════════════════════════════════════
+# Build outputs (regenerable via npm run build)
+# ════════════════════════════════════════════════════════════════════
+.next/
+out/
+dist/
+build/
+**/dist/
+**/lib/
+
+# SDK built artifacts (rebuilt with `npm run build`)
+backend/sdk-spark/public/v1/popup.js
+backend/sdk-spark/public/v1/popup.css
+backend/blaze/sdk/public/v1/popup.js
+backend/blaze/sdk/public/v1/popup.css
+
+# TypeScript incremental cache
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# ════════════════════════════════════════════════════════════════════
+# Firebase artifacts (auto-regenerated)
+# ════════════════════════════════════════════════════════════════════
+.firebase/
+**/.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+database-debug.log*
+pubsub-debug.log*
+*-debug.log
+
+# ════════════════════════════════════════════════════════════════════
+# Logs
+# ════════════════════════════════════════════════════════════════════
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ════════════════════════════════════════════════════════════════════
+# OS / Editor cruft
+# ════════════════════════════════════════════════════════════════════
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ════════════════════════════════════════════════════════════════════
+# AI / CLI tool local config (per-developer, not for sharing)
+# ════════════════════════════════════════════════════════════════════
+.claude/
+.cursor/
+.aider*
+.continue/
+
+# ════════════════════════════════════════════════════════════════════
+# Misc
+# ════════════════════════════════════════════════════════════════════
+*.local
+coverage/
+.cache/
+.parcel-cache/
+.turbo/

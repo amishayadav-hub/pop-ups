@@ -25,7 +25,8 @@ out/
 dist/
 build/
 **/dist/
-**/lib/
+# Cloud Functions TypeScript compile output (do NOT match frontend/lib/)
+backend/blaze/functions/lib/
 
 # SDK built artifacts (rebuilt with `npm run build`)
 backend/sdk-spark/public/v1/popup.js

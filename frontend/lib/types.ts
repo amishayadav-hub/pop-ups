@@ -31,6 +31,7 @@ export type DashboardMetrics = {
   clicks: number;
   ctr: number;
   conversions: number;
+  dismissed: number;
 };
 
 export type PopupSummary = {
@@ -116,7 +117,7 @@ export type SignalWeights = {
   variant_tap_2: number;
   // Negative signals
   add_to_cart_clicked: number;
-  pinch_zoom: number;
+  search_active: number;
 };
 
 export type ScoringConfig = {
@@ -162,6 +163,6 @@ export const DEFAULT_SCORING_CONFIG: ScoringConfig = {
     variant_tap_1: 15,
     variant_tap_2: 10,
     add_to_cart_clicked: -50,
-    pinch_zoom: -15,
+    search_active: -20,
   },
 };

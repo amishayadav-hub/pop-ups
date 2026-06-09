@@ -77,6 +77,31 @@
   transform: translateY(0);
 }
 
+.nx-timer {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
+  color: #4b5563;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+.nx-timer-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
 .nx-close {
   position: absolute;
   top: 8px;

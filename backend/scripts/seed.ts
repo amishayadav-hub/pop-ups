@@ -158,7 +158,7 @@ const SCORING_CONFIG = {
     variant_tap_1: 15,
     variant_tap_2: 10,
     add_to_cart_clicked: -50,
-    pinch_zoom: -15,
+    search_active: -20,
   },
 };
 

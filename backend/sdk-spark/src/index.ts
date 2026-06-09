@@ -218,7 +218,7 @@ function onScoreThresholdReached(
       popupId: popup.id,
       type: "impression",
       ...scoreSnapshot,
-    } as any,
+    },
     popup.position,
   );
 
@@ -239,9 +239,17 @@ function onScoreThresholdReached(
     applyDiscountAndRedirect(popup.discountCode, popup.redirectPath);
   });
 
-  shown.onClose(() => {
-    // Popup dismissed — don't re-fire this session
-    // (markPopupShown already set sessionStorage flag)
+  shown.onClose((reason) => {
+    // Popup dismissed without conversion — log it so the dashboard can
+    // distinguish active rejection (X / backdrop) from passive ignore.
+    api.sendEvent(
+      {
+        popupId: popup.id,
+        type: "dismiss",
+        dismissReason: reason,
+      },
+      popup.position,
+    );
   });
 }
 

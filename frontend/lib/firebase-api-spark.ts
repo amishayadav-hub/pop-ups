@@ -36,12 +36,13 @@ import { DEFAULT_SCORING_CONFIG } from "./types";
 // Live-events helpers
 // -----------------------------------------------------------------------------
 
-type EventType = "impression" | "click" | "convert";
+type EventType = "impression" | "click" | "convert" | "dismiss";
 
 type EventDoc = {
   type: EventType;
   popupId?: string;
   intent?: IntentTier;
+  dismissReason?: "x_button" | "backdrop";
   ts?: Timestamp | { toMillis?: () => number } | Date | number | string;
 };
 
@@ -82,12 +83,14 @@ function countByType(events: EventDoc[]) {
   let impressions = 0;
   let clicks = 0;
   let conversions = 0;
+  let dismissed = 0;
   for (const e of events) {
     if (e.type === "impression") impressions++;
     else if (e.type === "click") clicks++;
     else if (e.type === "convert") conversions++;
+    else if (e.type === "dismiss") dismissed++;
   }
-  return { impressions, clicks, conversions };
+  return { impressions, clicks, conversions, dismissed };
 }
 
 // -----------------------------------------------------------------------------
@@ -111,12 +114,12 @@ async function getDocData<T>(path: string): Promise<T | null> {
 export const firebaseSparkApi: ApiShape = {
   getMetrics: async (): Promise<DashboardMetrics> => {
     const events = await fetchRecentEvents();
-    const { impressions, clicks, conversions } = countByType(events);
+    const { impressions, clicks, conversions, dismissed } = countByType(events);
     const ctr =
       impressions > 0
         ? Math.round((clicks / impressions) * 100 * 100) / 100
         : 0;
-    return { impressions, clicks, ctr, conversions };
+    return { impressions, clicks, ctr, conversions, dismissed };
   },
 
   getPopups: async (): Promise<PopupSummary[]> => {

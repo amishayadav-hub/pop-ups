@@ -17,6 +17,7 @@ export const MOCK_METRICS: DashboardMetrics = {
   clicks: 12_847,
   ctr: 6.97,
   conversions: 1_283,
+  dismissed: 41_872,
 };
 
 export const MOCK_POPUPS: PopupSummary[] = [

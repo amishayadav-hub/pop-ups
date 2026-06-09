@@ -27,7 +27,7 @@ export type SignalWeights = {
   variant_tap_1: number;
   variant_tap_2: number;
   add_to_cart_clicked: number;
-  pinch_zoom: number;
+  search_active: number;
 };
 
 export const DEFAULT_WEIGHTS: SignalWeights = {
@@ -48,7 +48,7 @@ export const DEFAULT_WEIGHTS: SignalWeights = {
   variant_tap_1: 15,
   variant_tap_2: 10,
   add_to_cart_clicked: -50,
-  pinch_zoom: -15,
+  search_active: -20,
 };
 
 /* -------------------------------------------------------------------------- */
@@ -395,22 +395,44 @@ export function attachVariantTapSignal(
   );
 }
 
-export function attachPinchZoomSignal(
+// Detects when visitor focuses any element that looks like a search bar —
+// either by element type, ARIA role, name="q" (Shopify standard), or themed
+// class/id patterns. Covers predictive-search modals and slide-in drawers
+// because they delegate via focusin (bubbles up after element is added).
+const SEARCH_SELECTORS = [
+  'input[type="search"]',
+  'input[name="q"]',
+  'input[placeholder*="search" i]',
+  'input[aria-label*="search" i]',
+  '[role="searchbox"]',
+  'form[action*="/search"] input',
+  'form[role="search"] input',
+  ".search-input",
+  ".search__input",
+  ".search-bar__input",
+  ".header-search input",
+  ".predictive-search input",
+  "#Search",
+  "#search-input",
+].join(",");
+
+export function attachSearchActiveSignal(
   state: ScoringState,
   weight: number,
 ): void {
-  if (!isMobile()) return;
   let fired = false;
   document.addEventListener(
-    "touchmove",
-    (e: TouchEvent) => {
+    "focusin",
+    (e) => {
       if (fired) return;
-      if (e.touches.length >= 2) {
-        addSignal(state, "pinch_zoom", weight);
+      const target = e.target as Element | null;
+      if (!target || !target.closest) return;
+      if (target.closest(SEARCH_SELECTORS)) {
+        addSignal(state, "search_active", weight);
         fired = true;
       }
     },
-    { passive: true },
+    { passive: true, capture: true },
   );
 }
 
@@ -470,7 +492,7 @@ export function attachAllSignals(
   // Negative signals
   attachAddToCartNegative(state, weights.add_to_cart_clicked, addedToCart);
   attachVariantTapSignal(state, weights.variant_tap_1, weights.variant_tap_2);
-  attachPinchZoomSignal(state, weights.pinch_zoom);
+  attachSearchActiveSignal(state, weights.search_active);
 
   return { addedToCart };
 }

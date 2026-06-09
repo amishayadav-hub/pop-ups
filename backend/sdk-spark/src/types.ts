@@ -49,8 +49,19 @@ export type ConfigResponse = {
   };
 };
 
+export type DismissReason = "x_button" | "backdrop" | "timeout";
+
+export type IntentTier = "low" | "medium" | "high";
+
 export type EventInput = {
   popupId: PopupId;
-  type: "impression" | "click" | "convert";
+  type: "impression" | "click" | "convert" | "dismiss";
   conversionKind?: "click" | "add_to_cart";
+  dismissReason?: DismissReason;
+  intent?: IntentTier;
+  // Score-snapshot fields included on impression events
+  score?: number;
+  threshold?: number;
+  timeOnPageMs?: number;
+  signals?: string[];
 };

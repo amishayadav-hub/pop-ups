@@ -48,7 +48,7 @@ service cloud.firestore {
         request.resource.data.keys().hasAll(['popupId', 'type', 'ts'])
         && request.resource.data.popupId is string
         && request.resource.data.popupId.size() < 64
-        && request.resource.data.type in ['impression', 'click', 'convert']
+        && request.resource.data.type in ['impression', 'click', 'convert', 'dismiss']
         && request.resource.data.ts is timestamp;
       allow update, delete: if false;
     }

@@ -1,9 +1,21 @@
 export type PopupTypeId =
   | "exit-intent"
-  | "entry"
+  | "abandonment-exit-intent"
   | "promotional"
-  | "countdown"
   | "weather";
+
+export type WeeklyDataPoint = {
+  day: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
+  count: number;
+};
+
+export type PopupAnalyticsMetrics = {
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  closed: number;
+  ignored?: number;
+};
 
 export type Position =
   | "top-left"
@@ -78,7 +90,6 @@ export type PopupTypeCard = {
   name: string;
   description: string;
   enabled: boolean;
-  expiresAt?: string;
 };
 
 export type IntentBreakdown = {
@@ -132,6 +143,55 @@ export type ScoringConfig = {
   cartUiGraceSec: number;
   purchaseLockDays: number;
   weights: SignalWeights;
+};
+
+// ──────────────────────────────────────────────────────────────────
+// Abandonment Exit Intent — parallel engine config
+// ──────────────────────────────────────────────────────────────────
+
+export type AbandonmentScenario =
+  | "post_add_to_cart" // Add-to-cart happened, exit from any page
+  | "checkout_started" // User reached /checkouts/... then exit
+  | "cart_page"; // User on /cart then exit
+
+export type AbandonmentSignalWeights = {
+  // Positive (push toward fire)
+  popstate: number;
+  mouseleave_top: number;
+  visibility_hidden: number;
+  tab_blur: number;
+  rapid_scroll_up: number;
+  touch_idle_25s: number;
+  // Negative (1-10, push away from fire — user is still engaged)
+  reviews_section_seen: number;
+  time_30s: number;
+  time_60s: number;
+  variant_tap_1: number;
+};
+
+export type AbandonmentScoringConfig = {
+  threshold: number;
+  decayRate: number;
+  scoreMax: number;
+  weights: AbandonmentSignalWeights;
+};
+
+export const DEFAULT_ABANDONMENT_CONFIG: AbandonmentScoringConfig = {
+  threshold: 50,
+  decayRate: 2,
+  scoreMax: 120,
+  weights: {
+    popstate: 40,
+    mouseleave_top: 30,
+    visibility_hidden: 30,
+    tab_blur: 20,
+    rapid_scroll_up: 25,
+    touch_idle_25s: 20,
+    reviews_section_seen: -5,
+    time_30s: -3,
+    time_60s: -5,
+    variant_tap_1: -5,
+  },
 };
 
 export const DEFAULT_SCORING_CONFIG: ScoringConfig = {

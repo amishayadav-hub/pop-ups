@@ -1,9 +1,15 @@
 export type PopupId =
   | "exit-intent"
-  | "entry"
+  | "abandonment-exit-intent"
   | "promotional"
-  | "countdown"
   | "weather";
+
+export type PopupVariant = "default" | "reminder";
+
+export type AbandonmentScenario =
+  | "post_add_to_cart"
+  | "checkout_started"
+  | "cart_page";
 
 export type Position =
   | "top-left"
@@ -36,7 +42,7 @@ export type Popup = {
   redirectPath?: string;
   targetUrlPatterns?: string[];
   frequency: Frequency;
-  countdownExpiresAt?: string;
+  variant?: PopupVariant;
 };
 
 export type ConfigResponse = {
@@ -44,7 +50,6 @@ export type ConfigResponse = {
   serverTime: number;
   popups: Popup[];
   config: {
-    countdownExpiresAt?: string;
     weatherRule?: { id: string; name: string; conditions: string[] };
   };
 };
@@ -59,6 +64,7 @@ export type EventInput = {
   conversionKind?: "click" | "add_to_cart";
   dismissReason?: DismissReason;
   intent?: IntentTier;
+  scenario?: AbandonmentScenario;
   // Score-snapshot fields included on impression events
   score?: number;
   threshold?: number;

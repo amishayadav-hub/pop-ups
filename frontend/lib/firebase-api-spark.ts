@@ -15,6 +15,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "./firebase";
 import type { ApiShape } from "./mock-api";
 import type {
+  AbandonmentScoringConfig,
   BarDatum,
   City,
   DashboardMetrics,
@@ -22,6 +23,7 @@ import type {
   IntentBreakdown,
   IntentDistribution,
   IntentTier,
+  PopupAnalyticsMetrics,
   PopupSummary,
   PopupTypeCard,
   Position,
@@ -29,8 +31,14 @@ import type {
   ScoringConfig,
   WeatherCondition,
   WeatherRule,
+  WeeklyDataPoint,
 } from "./types";
-import { DEFAULT_SCORING_CONFIG } from "./types";
+import { DEFAULT_ABANDONMENT_CONFIG, DEFAULT_SCORING_CONFIG } from "./types";
+import {
+  MOCK_ABANDONMENT_METRICS,
+  MOCK_ABANDONMENT_WEEKLY,
+  MOCK_NORMAL_EXIT_WEEKLY,
+} from "./mock-data";
 
 // -----------------------------------------------------------------------------
 // Live-events helpers
@@ -42,7 +50,7 @@ type EventDoc = {
   type: EventType;
   popupId?: string;
   intent?: IntentTier;
-  dismissReason?: "x_button" | "backdrop";
+  dismissReason?: "x_button" | "backdrop" | "timeout";
   ts?: Timestamp | { toMillis?: () => number } | Date | number | string;
 };
 
@@ -91,6 +99,32 @@ function countByType(events: EventDoc[]) {
     else if (e.type === "dismiss") dismissed++;
   }
   return { impressions, clicks, conversions, dismissed };
+}
+
+const DAY_LABELS: WeeklyDataPoint["day"][] = [
+  "Sun",
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat",
+];
+
+function tsToMs(
+  ts: EventDoc["ts"],
+): number | null {
+  if (!ts) return null;
+  if (typeof ts === "number") return ts;
+  if (typeof ts === "string") {
+    const n = Date.parse(ts);
+    return isFinite(n) ? n : null;
+  }
+  if (ts instanceof Date) return ts.getTime();
+  if (typeof (ts as Timestamp).toMillis === "function") {
+    return (ts as Timestamp).toMillis();
+  }
+  return null;
 }
 
 // -----------------------------------------------------------------------------
@@ -277,12 +311,22 @@ export const firebaseSparkApi: ApiShape = {
   },
 
   setPopupBanner: async (popupId: string, bannerUrl: string) => {
-    await updateDoc(doc(db(), `popups/${popupId}`), { bannerUrl });
+    // setDoc with merge so the doc is created if it doesn't exist yet
+    // (e.g. abandonment-exit-intent before seed has been run).
+    await setDoc(
+      doc(db(), `popups/${popupId}`),
+      { id: popupId, bannerUrl },
+      { merge: true },
+    );
     return { ok: true as const };
   },
 
   setPopupPosition: async (popupId: string, position: Position) => {
-    await updateDoc(doc(db(), `popups/${popupId}`), { position });
+    await setDoc(
+      doc(db(), `popups/${popupId}`),
+      { id: popupId, position },
+      { merge: true },
+    );
     return { ok: true as const };
   },
 
@@ -309,5 +353,107 @@ export const firebaseSparkApi: ApiShape = {
       { merge: true },
     );
     return { ok: true as const };
+  },
+
+  getPopupAnalytics: async (
+    popupId: string,
+  ): Promise<PopupAnalyticsMetrics> => {
+    const isAbandonment = popupId === "abandonment-exit-intent";
+    const events = await fetchRecentEvents();
+    let impressions = 0;
+    let clicks = 0;
+    let closed = 0;
+    for (const e of events) {
+      if (e.popupId !== popupId) continue;
+      if (e.type === "impression") impressions++;
+      else if (e.type === "click") clicks++;
+      else if (
+        e.type === "dismiss" &&
+        (e.dismissReason === "x_button" || e.dismissReason === "backdrop")
+      ) {
+        closed++;
+      }
+    }
+    // Silent fallback to mock for abandonment while SDK ramps up traffic.
+    // Once real impressions start flowing, real numbers take over.
+    if (isAbandonment && impressions === 0) {
+      return MOCK_ABANDONMENT_METRICS;
+    }
+    const ctr =
+      impressions > 0
+        ? Math.round((clicks / impressions) * 100 * 100) / 100
+        : 0;
+    if (isAbandonment) {
+      // "Ignored" = saw the reminder but never tapped image or close.
+      // Reminder popup has no timer, so this is a derived count.
+      const ignored = Math.max(0, impressions - clicks - closed);
+      return { impressions, clicks, ctr, closed, ignored };
+    }
+    return { impressions, clicks, ctr, closed };
+  },
+
+  getAbandonmentScoringConfig: async (): Promise<AbandonmentScoringConfig> => {
+    const data = await getDocData<Partial<AbandonmentScoringConfig>>(
+      "scoringConfig/abandonment",
+    );
+    if (!data) return DEFAULT_ABANDONMENT_CONFIG;
+    return {
+      ...DEFAULT_ABANDONMENT_CONFIG,
+      ...data,
+      weights: {
+        ...DEFAULT_ABANDONMENT_CONFIG.weights,
+        ...(data.weights ?? {}),
+      },
+    };
+  },
+
+  setAbandonmentScoringConfig: async (config: AbandonmentScoringConfig) => {
+    await setDoc(
+      doc(db(), "scoringConfig/abandonment"),
+      { ...config, updatedAt: new Date().toISOString() },
+      { merge: true },
+    );
+    return { ok: true as const };
+  },
+
+  getWeeklyImpressionsForPopup: async (
+    popupId: string,
+  ): Promise<WeeklyDataPoint[]> => {
+    const events = await fetchRecentEvents();
+    const counts: Record<WeeklyDataPoint["day"], number> = {
+      Mon: 0,
+      Tue: 0,
+      Wed: 0,
+      Thu: 0,
+      Fri: 0,
+      Sat: 0,
+      Sun: 0,
+    };
+    let any = false;
+    const cutoffMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    for (const e of events) {
+      if (e.popupId !== popupId) continue;
+      if (e.type !== "impression") continue;
+      const ms = tsToMs(e.ts);
+      if (ms === null || ms < cutoffMs) continue;
+      const day = DAY_LABELS[new Date(ms).getDay()];
+      counts[day]++;
+      any = true;
+    }
+    // Silent fallback to mock when no events yet for this popup.
+    if (!any) {
+      return popupId === "abandonment-exit-intent"
+        ? MOCK_ABANDONMENT_WEEKLY
+        : MOCK_NORMAL_EXIT_WEEKLY;
+    }
+    return [
+      { day: "Mon", count: counts.Mon },
+      { day: "Tue", count: counts.Tue },
+      { day: "Wed", count: counts.Wed },
+      { day: "Thu", count: counts.Thu },
+      { day: "Fri", count: counts.Fri },
+      { day: "Sat", count: counts.Sat },
+      { day: "Sun", count: counts.Sun },
+    ];
   },
 };

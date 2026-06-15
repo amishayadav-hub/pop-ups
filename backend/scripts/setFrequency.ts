@@ -23,9 +23,8 @@ type Frequency =
 
 const FREQUENCIES: Record<string, Frequency> = {
   "exit-intent": "once-per-session",
-  entry: "once-per-visitor",
+  "abandonment-exit-intent": "once-per-session",
   promotional: "once-per-session",
-  countdown: "once-per-session",
   weather: "once-per-session",
 };
 

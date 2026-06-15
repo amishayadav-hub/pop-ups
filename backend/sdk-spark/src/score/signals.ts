@@ -7,6 +7,11 @@
 
 import { addSignal, markEngagement } from "./engine";
 import type { ScoringState } from "./engine";
+import {
+  addAbandonmentSignal,
+  armAbandonment,
+  type AbandonmentState,
+} from "./abandonmentEngine";
 import { isMobile } from "../visitor";
 
 export type SignalWeights = {
@@ -49,6 +54,38 @@ export const DEFAULT_WEIGHTS: SignalWeights = {
   variant_tap_2: 10,
   add_to_cart_clicked: -50,
   search_active: -20,
+};
+
+/* -------------------------------------------------------------------------- */
+/* Abandonment engine — weights + signal attachment                           */
+/* -------------------------------------------------------------------------- */
+
+export type AbandonmentSignalWeights = {
+  // Positive (push score UP, toward fire)
+  popstate: number;
+  mouseleave_top: number;
+  visibility_hidden: number;
+  tab_blur: number;
+  rapid_scroll_up: number;
+  touch_idle_25s: number;
+  // Negative (1-10, push score DOWN — visitor is still engaged)
+  reviews_section_seen: number;
+  time_30s: number;
+  time_60s: number;
+  variant_tap_1: number;
+};
+
+export const DEFAULT_ABANDONMENT_WEIGHTS: AbandonmentSignalWeights = {
+  popstate: 40,
+  mouseleave_top: 30,
+  visibility_hidden: 30,
+  tab_blur: 20,
+  rapid_scroll_up: 25,
+  touch_idle_25s: 20,
+  reviews_section_seen: -5,
+  time_30s: -3,
+  time_60s: -5,
+  variant_tap_1: -5,
 };
 
 /* -------------------------------------------------------------------------- */
@@ -495,4 +532,195 @@ export function attachAllSignals(
   attachSearchActiveSignal(state, weights.search_active);
 
   return { addedToCart };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Abandonment engine — listener attachments                                  */
+/* -------------------------------------------------------------------------- */
+
+// Same DOM selectors as the normal Add-to-Cart listener, reused here.
+function attachArmOnAddToCart(state: AbandonmentState): void {
+  document.addEventListener(
+    "click",
+    (e) => {
+      const target = e.target as Element | null;
+      if (!target || !target.closest) return;
+      if (target.closest(ADD_TO_CART_SELECTORS)) {
+        armAbandonment(state);
+      }
+    },
+    { passive: true, capture: true },
+  );
+}
+
+// All listeners use addAbandonmentSignal which silently no-ops until armed.
+function attachAbandonmentExitSignals(
+  state: AbandonmentState,
+  weights: AbandonmentSignalWeights,
+): void {
+  // popstate (back button / swipe-back)
+  try {
+    history.pushState({ nx_ab: 1 }, "", location.href);
+  } catch {
+    /* SPA history conflict — ignore */
+  }
+  window.addEventListener("popstate", () => {
+    addAbandonmentSignal(state, "popstate", weights.popstate);
+  });
+
+  // visibility (tab/app hidden)
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      addAbandonmentSignal(state, "visibility_hidden", weights.visibility_hidden);
+    }
+  });
+
+  // mouseleave top (desktop)
+  if (!isMobile()) {
+    document.addEventListener("mouseleave", (e: MouseEvent) => {
+      if (e.clientY <= 0) {
+        addAbandonmentSignal(state, "mouseleave_top", weights.mouseleave_top);
+      }
+    });
+    // window blur (desktop)
+    window.addEventListener("blur", () => {
+      addAbandonmentSignal(state, "tab_blur", weights.tab_blur);
+    });
+  }
+
+  // rapid scroll up
+  let lastY = window.scrollY;
+  let lastT = Date.now();
+  let throttleAt = 0;
+  let scrollUpFired = false;
+  document.addEventListener(
+    "scroll",
+    () => {
+      if (scrollUpFired) return;
+      const now = Date.now();
+      if (now - throttleAt < 100) return;
+      throttleAt = now;
+      const y = window.scrollY;
+      const dy = lastY - y;
+      const dt = now - lastT;
+      if (dt > 0 && dt < 300 && dy > 40 && y < 200) {
+        addAbandonmentSignal(state, "rapid_scroll_up", weights.rapid_scroll_up);
+        scrollUpFired = true;
+      }
+      lastY = y;
+      lastT = now;
+    },
+    { passive: true },
+  );
+
+  // touch idle 25s (mobile)
+  if (isMobile()) {
+    let lastInteraction = Date.now();
+    let touchIdleFired = false;
+    const reset = () => {
+      lastInteraction = Date.now();
+      touchIdleFired = false;
+    };
+    document.addEventListener("touchstart", reset, { passive: true });
+    document.addEventListener("scroll", reset, { passive: true });
+    setInterval(() => {
+      if (!touchIdleFired && Date.now() - lastInteraction > 25_000) {
+        addAbandonmentSignal(state, "touch_idle_25s", weights.touch_idle_25s);
+        touchIdleFired = true;
+      }
+    }, 5_000);
+  }
+}
+
+function attachAbandonmentNegativeSignals(
+  state: AbandonmentState,
+  weights: AbandonmentSignalWeights,
+): void {
+  // time on page
+  setTimeout(
+    () => addAbandonmentSignal(state, "time_30s", weights.time_30s),
+    30_000,
+  );
+  setTimeout(
+    () => addAbandonmentSignal(state, "time_60s", weights.time_60s),
+    60_000,
+  );
+
+  // reviews section seen — reuse IntersectionObserver pattern
+  if ("IntersectionObserver" in window) {
+    const selectors = [
+      "[id*='review' i]",
+      "[class*='review' i]",
+      "[id*='faq' i]",
+      "[class*='faq' i]",
+      "[data-section-type*='review' i]",
+    ];
+    let fired = false;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (fired) return;
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            addAbandonmentSignal(
+              state,
+              "reviews_section_seen",
+              weights.reviews_section_seen,
+            );
+            fired = true;
+            observer.disconnect();
+            return;
+          }
+        }
+      },
+      { threshold: 0.3 },
+    );
+    setTimeout(() => {
+      if (fired) return;
+      for (const sel of selectors) {
+        try {
+          document.querySelectorAll(sel).forEach((el) => {
+            try {
+              observer.observe(el);
+            } catch {
+              /* ignore */
+            }
+          });
+        } catch {
+          /* invalid selector */
+        }
+      }
+    }, 1_500);
+  }
+
+  // variant tap 1
+  let variantTapCount = 0;
+  document.addEventListener(
+    "click",
+    (e) => {
+      const target = e.target as Element | null;
+      if (!target || !target.closest) return;
+      if (target.closest(VARIANT_SELECTORS)) {
+        variantTapCount++;
+        if (variantTapCount === 1) {
+          addAbandonmentSignal(state, "variant_tap_1", weights.variant_tap_1);
+        }
+      }
+    },
+    { passive: true, capture: true },
+  );
+}
+
+/**
+ * Attaches every abandonment-engine listener. Listeners stay dormant
+ * (addAbandonmentSignal is a no-op) until the engine is ARMED by either:
+ *   - cartItemCount > 0 at boot (handled in createAbandonmentState)
+ *   - user clicking add-to-cart (handled by attachArmOnAddToCart)
+ */
+export function attachAllAbandonmentSignals(
+  state: AbandonmentState,
+  weights: AbandonmentSignalWeights = DEFAULT_ABANDONMENT_WEIGHTS,
+): void {
+  attachArmOnAddToCart(state);
+  attachAbandonmentExitSignals(state, weights);
+  attachAbandonmentNegativeSignals(state, weights);
 }

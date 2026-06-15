@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { ABANDONMENT_PLACEHOLDER } from "@/lib/mock-data";
 import type { DashboardMetrics, PopupSummary } from "@/lib/types";
 
 type Props = {
@@ -18,7 +19,33 @@ export default function Dashboard({ onJumpToPosition }: Props) {
 
   useEffect(() => {
     api.getMetrics().then(setMetrics);
-    api.getPopups().then(setPopups);
+    api.getPopups().then((real) => {
+      // Same merge pattern as AllPopups / PopupTypes / Upload:
+      // splice Abandonment Exit Intent right after exit-intent. Real
+      // Firestore values override placeholder so any saved status/CTR
+      // persists; otherwise we render a sensible placeholder card.
+      const realAbandonment = real.find(
+        (p) => p.id === "abandonment-exit-intent",
+      );
+      const abandonment = {
+        ...ABANDONMENT_PLACEHOLDER,
+        ...(realAbandonment ?? {}),
+      };
+      const out: PopupSummary[] = [];
+      let inserted = false;
+      for (const p of real) {
+        if (p.id === "abandonment-exit-intent") continue;
+        if (p.id === "exit-intent") {
+          out.push({ ...p, name: "Normal Exit Intent" });
+          out.push(abandonment);
+          inserted = true;
+        } else {
+          out.push(p);
+        }
+      }
+      if (!inserted) out.push(abandonment);
+      setPopups(out);
+    });
   }, []);
 
   const activeCount = popups.filter((p) => p.status === "active").length;

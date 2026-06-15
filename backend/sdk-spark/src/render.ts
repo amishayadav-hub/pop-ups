@@ -44,9 +44,18 @@ export type ShownPopup = {
   onClose: (cb: (reason: DismissReason) => void) => void;
 };
 
-export function showPopup(popup: Popup): ShownPopup | null {
+export type ShowPopupOptions = {
+  withTimer?: boolean; // default true. Reminder popups pass false.
+};
+
+export function showPopup(
+  popup: Popup,
+  options: ShowPopupOptions = {},
+): ShownPopup | null {
   // Image-only design: if no banner URL, nothing to show.
   if (!popup.bannerUrl) return null;
+
+  const withTimer = options.withTimer !== false;
 
   const root = ensureRoot();
 
@@ -55,12 +64,16 @@ export function showPopup(popup: Popup): ShownPopup | null {
   overlay.dataset.popupId = popup.id;
   overlay.dataset.position = popup.position;
 
+  const timerHtml = withTimer
+    ? `<div class="nx-timer" aria-live="polite" aria-label="Auto-closes in">
+         <span class="nx-timer-icon" aria-hidden="true">&#9201;</span>
+         <span class="nx-timer-value">${formatCountdown(AUTO_DISMISS_SEC)}</span>
+       </div>`
+    : "";
+
   overlay.innerHTML = `
     <div class="nx-card" role="dialog" aria-modal="true" aria-label="${escapeHtml(popup.name || "Promotional offer")}">
-      <div class="nx-timer" aria-live="polite" aria-label="Auto-closes in">
-        <span class="nx-timer-icon" aria-hidden="true">&#9201;</span>
-        <span class="nx-timer-value">${formatCountdown(AUTO_DISMISS_SEC)}</span>
-      </div>
+      ${timerHtml}
       <button type="button" class="nx-close" aria-label="Close">&times;</button>
       <img class="nx-banner" src="${escapeHtml(popup.bannerUrl)}" alt="" loading="eager" />
     </div>
@@ -122,18 +135,21 @@ export function showPopup(popup: Popup): ShownPopup | null {
 
   // Auto-dismiss countdown — starts immediately, ticks every second.
   // At 0 the popup closes itself and fires close handlers with reason "timeout".
-  const timerValueEl = overlay.querySelector(
-    ".nx-timer-value",
-  ) as HTMLElement | null;
-  let secondsLeft = AUTO_DISMISS_SEC;
-  countdownIntervalId = window.setInterval(() => {
-    secondsLeft -= 1;
-    if (timerValueEl) timerValueEl.textContent = formatCountdown(secondsLeft);
-    if (secondsLeft <= 0) {
-      closeCbs.forEach((cb) => cb("timeout"));
-      destroy();
-    }
-  }, 1000);
+  // Skipped entirely for reminder popups (withTimer === false).
+  if (withTimer) {
+    const timerValueEl = overlay.querySelector(
+      ".nx-timer-value",
+    ) as HTMLElement | null;
+    let secondsLeft = AUTO_DISMISS_SEC;
+    countdownIntervalId = window.setInterval(() => {
+      secondsLeft -= 1;
+      if (timerValueEl) timerValueEl.textContent = formatCountdown(secondsLeft);
+      if (secondsLeft <= 0) {
+        closeCbs.forEach((cb) => cb("timeout"));
+        destroy();
+      }
+    }, 1000);
+  }
 
   return {
     el: overlay,

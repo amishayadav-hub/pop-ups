@@ -116,12 +116,27 @@ export class Api {
     }
   }
 
+  // Same as getScoringConfig but for the abandonment-engine config.
+  async getAbandonmentScoringConfig(): Promise<Record<string, any> | null> {
+    try {
+      const r = await fetch(
+        `${this.base}/scoringConfig/abandonment?key=${encodeURIComponent(this.opts.webApiKey)}`,
+      );
+      if (!r.ok) return null;
+      const json = await r.json();
+      return parseFields(json.fields);
+    } catch {
+      return null;
+    }
+  }
+
   sendEvent(ev: EventInput, position?: string): void {
     const event = {
       popupId: ev.popupId,
       type: ev.type,
       ...(ev.conversionKind && { conversionKind: ev.conversionKind }),
       ...(ev.dismissReason && { dismissReason: ev.dismissReason }),
+      ...(ev.scenario && { scenario: ev.scenario }),
       ...(ev.intent && { intent: ev.intent }),
       ...(typeof ev.score === "number" && { score: ev.score }),
       ...(typeof ev.threshold === "number" && { threshold: ev.threshold }),
@@ -164,7 +179,7 @@ export function matchesUrl(patterns: string[] | undefined, path: string): boolea
 }
 
 export function nextIntentBucket(id: PopupId): "low" | "medium" | "high" {
-  if (id === "exit-intent" || id === "countdown") return "high";
+  if (id === "exit-intent" || id === "abandonment-exit-intent") return "high";
   if (id === "promotional" || id === "weather") return "medium";
   return "low";
 }

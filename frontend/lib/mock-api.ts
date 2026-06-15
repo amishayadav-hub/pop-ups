@@ -1,10 +1,12 @@
 import type {
+  AbandonmentScoringConfig,
   BarDatum,
   City,
   DashboardMetrics,
   FunnelStage,
   IntentBreakdown,
   IntentDistribution,
+  PopupAnalyticsMetrics,
   PopupSummary,
   PopupTypeCard,
   Position,
@@ -12,10 +14,13 @@ import type {
   ScoringConfig,
   WeatherCondition,
   WeatherRule,
+  WeeklyDataPoint,
 } from "./types";
-import { DEFAULT_SCORING_CONFIG } from "./types";
+import { DEFAULT_ABANDONMENT_CONFIG, DEFAULT_SCORING_CONFIG } from "./types";
 import {
   CURRENT_POSITION,
+  MOCK_ABANDONMENT_METRICS,
+  MOCK_ABANDONMENT_WEEKLY,
   MOCK_CITIES,
   MOCK_CONVERSIONS_BY_TYPE,
   MOCK_FUNNEL,
@@ -23,6 +28,7 @@ import {
   MOCK_INTENT_DISTRIBUTION,
   MOCK_LOW_MED_CONVERTED,
   MOCK_METRICS,
+  MOCK_NORMAL_EXIT_WEEKLY,
   MOCK_POPUPS,
   MOCK_POPUP_TYPES,
   MOCK_WEATHER_RULE,
@@ -80,6 +86,30 @@ export const mockApi = {
   getScoringConfig: (): Promise<ScoringConfig> => wait(DEFAULT_SCORING_CONFIG),
   setScoringConfig: (_config: ScoringConfig) =>
     wait({ ok: true as const }, 300),
+
+  getAbandonmentScoringConfig: (): Promise<AbandonmentScoringConfig> =>
+    wait(DEFAULT_ABANDONMENT_CONFIG),
+  setAbandonmentScoringConfig: (_config: AbandonmentScoringConfig) =>
+    wait({ ok: true as const }, 300),
+
+  getPopupAnalytics: (popupId: string): Promise<PopupAnalyticsMetrics> => {
+    if (popupId === "abandonment-exit-intent") {
+      return wait(MOCK_ABANDONMENT_METRICS);
+    }
+    return wait({
+      impressions: 12_847,
+      clicks: 1_024,
+      ctr: 7.97,
+      closed: 8_234,
+    });
+  },
+
+  getWeeklyImpressionsForPopup: (popupId: string): Promise<WeeklyDataPoint[]> =>
+    wait(
+      popupId === "abandonment-exit-intent"
+        ? MOCK_ABANDONMENT_WEEKLY
+        : MOCK_NORMAL_EXIT_WEEKLY,
+    ),
 };
 
 export type ApiShape = typeof mockApi;

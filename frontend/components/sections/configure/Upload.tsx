@@ -8,6 +8,10 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import {
+  ABANDONMENT_PLACEHOLDER,
+  ABANDONMENT_POPUP_TYPE,
+} from "@/lib/mock-data";
 import type {
   PopupSummary,
   PopupTypeCard,
@@ -74,8 +78,20 @@ export default function Upload() {
   const [targetPopupId, setTargetPopupId] = useState<string>("");
 
   useEffect(() => {
-    api.getPopupTypes().then(setPopupTypes);
-    api.getPopups().then(setPopups);
+    api.getPopupTypes().then((real) => {
+      // Splice "Abandonment Exit Intent" in right after "Exit intent" so the
+      // picker shows it alongside the normal exit-intent type.
+      if (real.find((p) => p.id === "abandonment-exit-intent")) {
+        setPopupTypes(real);
+        return;
+      }
+      const out = [...real];
+      const exitIdx = out.findIndex((p) => p.id === "exit-intent");
+      if (exitIdx >= 0) out.splice(exitIdx + 1, 0, ABANDONMENT_POPUP_TYPE);
+      else out.push(ABANDONMENT_POPUP_TYPE);
+      setPopupTypes(out);
+    });
+    refreshPopups();
   }, []);
 
   useEffect(() => {
@@ -88,7 +104,14 @@ export default function Upload() {
 
   const refreshPopups = async () => {
     const fresh = await api.getPopups();
-    setPopups(fresh);
+    // Real Firestore values override placeholder defaults so user-uploaded
+    // banner / chosen position persist correctly.
+    const realAbandonment = fresh.find(
+      (p) => p.id === "abandonment-exit-intent",
+    );
+    const out = fresh.filter((p) => p.id !== "abandonment-exit-intent");
+    out.push({ ...ABANDONMENT_PLACEHOLDER, ...(realAbandonment ?? {}) });
+    setPopups(out);
   };
 
   // Resolve banner: uploaded URL → falls back to dummy hero image

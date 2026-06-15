@@ -18,9 +18,8 @@ const db = getFirestore(undefined as any, "default");
 
 const STATUSES: Record<string, "active" | "paused"> = {
   "exit-intent": "active",
-  entry: "paused",
+  "abandonment-exit-intent": "active",
   promotional: "paused",
-  countdown: "paused",
   weather: "paused",
 };
 

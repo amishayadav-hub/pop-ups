@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   Layers,
   MapPin,
-  Sliders,
   TrendingUp,
   UploadCloud,
 } from "lucide-react";
@@ -15,10 +14,12 @@ import { LoginScreen, NoAdminScreen } from "@/components/LoginScreen";
 import Sidebar, { type NavSection } from "@/components/Sidebar";
 import Dashboard from "@/components/sections/overview/Dashboard";
 import AllPopups from "@/components/sections/overview/AllPopups";
+import PopupAnalytics from "@/components/sections/overview/PopupAnalytics";
 import Upload from "@/components/sections/configure/Upload";
 import GeoWeather from "@/components/sections/configure/GeoWeather";
 import PopupTypes from "@/components/sections/configure/PopupTypes";
 import ScoringStudio from "@/components/sections/configure/ScoringStudio";
+import AbandonmentScoringStudio from "@/components/sections/configure/AbandonmentScoringStudio";
 import Conversions from "@/components/sections/analytics/Conversions";
 
 const SECTIONS: NavSection[] = [
@@ -37,7 +38,6 @@ const SECTIONS: NavSection[] = [
       { id: "upload", name: "Upload", icon: <UploadCloud /> },
       { id: "geo-weather", name: "Geo & weather", icon: <MapPin /> },
       { id: "popup-types", name: "Popup types", icon: <Boxes /> },
-      { id: "scoring-studio", name: "Scoring Studio", icon: <Sliders /> },
     ],
   },
   {
@@ -73,11 +73,6 @@ const TITLES: Record<string, { section: string; sub: string; blurb: string }> = 
     sub: "Popup types",
     blurb: "Enable or pause popup variants.",
   },
-  "scoring-studio": {
-    section: "Configure",
-    sub: "Scoring Studio",
-    blurb: "Live-tune scoring weights, threshold, and skip gates.",
-  },
   conversions: {
     section: "Analytics",
     sub: "Conversions",
@@ -88,7 +83,20 @@ const TITLES: Record<string, { section: string; sub: string; blurb: string }> = 
 export default function Page() {
   const { user, isAdmin, loading } = useAuth();
   const [activeId, setActiveId] = useState("dashboard");
+  const [selectedPopup, setSelectedPopup] = useState<
+    { id: string; name: string; description: string } | null
+  >(null);
+  const [showScoringStudio, setShowScoringStudio] = useState(false);
+  const [showAbandonmentStudio, setShowAbandonmentStudio] = useState(false);
   const meta = TITLES[activeId];
+
+  // When navigating between sidebar sections, clear any drill-down selection.
+  const handleSelectSection = (id: string) => {
+    setSelectedPopup(null);
+    setShowScoringStudio(false);
+    setShowAbandonmentStudio(false);
+    setActiveId(id);
+  };
 
   if (loading) {
     return (
@@ -106,7 +114,7 @@ export default function Page() {
       <Sidebar
         sections={SECTIONS}
         activeId={activeId}
-        onSelect={setActiveId}
+        onSelect={handleSelectSection}
       />
 
       <main className="flex-1 overflow-x-hidden">
@@ -114,9 +122,23 @@ export default function Page() {
           <div className="mx-auto flex max-w-6xl items-center justify-between px-8 py-4">
             <div>
               <h1 className="text-lg font-semibold leading-tight">
-                {meta.sub}
+                {showScoringStudio
+                  ? "Scoring Studio"
+                  : showAbandonmentStudio
+                    ? "Abandonment Scoring Studio"
+                    : selectedPopup
+                      ? selectedPopup.name
+                      : meta.sub}
               </h1>
-              <p className="mt-0.5 text-xs text-muted-foreground">{meta.blurb}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {showScoringStudio
+                  ? "Live-tune scoring weights, threshold, and skip gates."
+                  : showAbandonmentStudio
+                    ? "Tune weights and thresholds for the abandonment-exit-intent engine."
+                    : selectedPopup
+                      ? selectedPopup.description
+                      : meta.blurb}
+              </p>
             </div>
           </div>
         </header>
@@ -125,11 +147,34 @@ export default function Page() {
           {activeId === "dashboard" && (
             <Dashboard onJumpToPosition={() => setActiveId("upload")} />
           )}
-          {activeId === "all-popups" && <AllPopups />}
+          {activeId === "all-popups" &&
+            (showScoringStudio ? (
+              <ScoringStudio onBack={() => setShowScoringStudio(false)} />
+            ) : showAbandonmentStudio ? (
+              <AbandonmentScoringStudio
+                onBack={() => setShowAbandonmentStudio(false)}
+              />
+            ) : selectedPopup ? (
+              <PopupAnalytics
+                popupId={selectedPopup.id}
+                popupName={selectedPopup.name}
+                description={selectedPopup.description}
+                onBack={() => setSelectedPopup(null)}
+                onOpenScoringStudio={() => setShowScoringStudio(true)}
+                onOpenAbandonmentScoringStudio={() =>
+                  setShowAbandonmentStudio(true)
+                }
+              />
+            ) : (
+              <AllPopups
+                onSelectPopup={(id, name, description) =>
+                  setSelectedPopup({ id, name, description })
+                }
+              />
+            ))}
           {activeId === "upload" && <Upload />}
           {activeId === "geo-weather" && <GeoWeather />}
           {activeId === "popup-types" && <PopupTypes />}
-          {activeId === "scoring-studio" && <ScoringStudio />}
           {activeId === "conversions" && <Conversions />}
         </div>
       </main>

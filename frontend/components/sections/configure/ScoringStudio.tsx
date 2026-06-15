@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { HelpCircle, Minus, Plus, RotateCcw, Save, Sliders } from "lucide-react";
+import { ArrowLeft, HelpCircle, Minus, Plus, RotateCcw, Save, Sliders } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -268,7 +268,11 @@ function deepEqual(a: ScoringConfig, b: ScoringConfig): boolean {
   return true;
 }
 
-export default function ScoringStudio() {
+type Props = {
+  onBack?: () => void;
+};
+
+export default function ScoringStudio({ onBack }: Props = {}) {
   const [original, setOriginal] = useState<ScoringConfig | null>(null);
   const [draft, setDraft] = useState<ScoringConfig | null>(null);
   const [status, setStatus] = useState<Status>("idle");
@@ -348,6 +352,19 @@ export default function ScoringStudio() {
 
   return (
     <div className="space-y-5">
+      {onBack && (
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            className="gap-1.5 -ml-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Analytics
+          </Button>
+        </div>
+      )}
       {/* Sticky save bar */}
       <Card
         className={cn(

@@ -22,26 +22,11 @@ const db = getFirestore(undefined as any, "default");
 
 const POPUPS = [
   {
-    id: "entry",
-    name: "Welcome — new user",
-    status: "active",
-    position: "center",
-    order: 0,
-    headline: "Welcome to Anveshan!",
-    subheadline: "Flat 10% off on your first purchase of A2 ghee, oils & more.",
-    ctaText: "Claim 10% off",
-    discountCode: "FIRST10",
-    redirectPath: "/collections/all",
-    frequency: "once-per-visitor",
-    ctr: 5.2,
-    conversions: 287,
-  },
-  {
     id: "exit-intent",
     name: "Exit intent — last chance",
     status: "active",
     position: "center",
-    order: 1,
+    order: 0,
     headline: "Wait — don't leave empty-handed",
     subheadline: "Grab an extra 15% off on your order before you go.",
     ctaText: "Apply 15% off",
@@ -50,6 +35,21 @@ const POPUPS = [
     frequency: "once-per-session",
     ctr: 8.4,
     conversions: 412,
+  },
+  {
+    id: "abandonment-exit-intent",
+    name: "Abandonment Exit Intent",
+    status: "active",
+    position: "center",
+    order: 1,
+    variant: "reminder",
+    headline: "Your cart is waiting",
+    subheadline: "Don't forget the items you added — come back any time.",
+    ctaText: "Return to cart",
+    redirectPath: "/cart",
+    frequency: "once-per-session",
+    ctr: 11.2,
+    conversions: 924,
   },
   {
     id: "promotional",
@@ -68,26 +68,11 @@ const POPUPS = [
     conversions: 198,
   },
   {
-    id: "countdown",
-    name: "Flash sale — countdown",
-    status: "active",
-    position: "top-center",
-    order: 3,
-    headline: "Flash sale ends soon",
-    subheadline: "15% off everything. Limited time.",
-    ctaText: "Shop the sale",
-    discountCode: "FLASH15",
-    redirectPath: "/collections/all",
-    frequency: "once-per-session",
-    ctr: 11.6,
-    conversions: 304,
-  },
-  {
     id: "weather",
     name: "Weather-based",
     status: "paused",
     position: "middle-right",
-    order: 4,
+    order: 3,
     headline: "Rainy day special",
     subheadline: "Stay warm with our A2 ghee + turmeric combo.",
     ctaText: "Shop combo",
@@ -101,9 +86,8 @@ const POPUPS = [
 
 const POPUP_TYPES = [
   { id: "exit-intent", name: "Exit intent", description: "Detect cursor heading to the tab bar or back-button on mobile.", enabled: true, order: 0 },
-  { id: "entry", name: "Entry / new user", description: "First-visit welcome popup with onboarding hook.", enabled: true, order: 1 },
+  { id: "abandonment-exit-intent", name: "Abandonment Exit Intent", description: "Reminder popup for visitors who added items to cart then tried to leave.", enabled: true, order: 1 },
   { id: "promotional", name: "Promotional", description: "Push slow-moving products on specific product/collection pages.", enabled: true, order: 2 },
-  { id: "countdown", name: "Countdown", description: "Limited-time offer with live timer.", enabled: true, order: 3, expiresAt: new Date(Date.now() + 2 * 3600_000 + 34 * 60_000).toISOString() },
 ];
 
 const CITIES = [
@@ -162,6 +146,24 @@ const SCORING_CONFIG = {
   },
 };
 
+const ABANDONMENT_SCORING_CONFIG = {
+  threshold: 50,
+  decayRate: 2,
+  scoreMax: 120,
+  weights: {
+    popstate: 40,
+    mouseleave_top: 30,
+    visibility_hidden: 30,
+    tab_blur: 20,
+    rapid_scroll_up: 25,
+    touch_idle_25s: 20,
+    reviews_section_seen: -5,
+    time_30s: -3,
+    time_60s: -5,
+    variant_tap_1: -5,
+  },
+};
+
 const CONFIG_GLOBAL = {
   currentPosition: "bottom-left",
   weatherRule: {
@@ -188,9 +190,8 @@ const METRICS_SUMMARY = {
     { tier: "high", count: 284 },
   ],
   conversionsByType: [
-    { label: "Countdown", value: 304 },
     { label: "Exit intent", value: 412 },
-    { label: "Entry", value: 287 },
+    { label: "Abandonment Exit Intent", value: 924 },
     { label: "Promotional", value: 198 },
     { label: "Weather", value: 82 },
   ],
@@ -218,6 +219,7 @@ async function seed() {
 
   batch.set(db.doc("config/global"), CONFIG_GLOBAL);
   batch.set(db.doc("scoringConfig/global"), SCORING_CONFIG);
+  batch.set(db.doc("scoringConfig/abandonment"), ABANDONMENT_SCORING_CONFIG);
   batch.set(db.doc("benchmarks/positions"), {
     positions: POSITION_BENCHMARKS,
     computedAt: Timestamp.now(),

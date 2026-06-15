@@ -1,29 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Cloud, DoorOpen, LogIn, Megaphone, Timer } from "lucide-react";
+import { Cloud, DoorOpen, Megaphone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
+import { ABANDONMENT_PLACEHOLDER } from "@/lib/mock-data";
 import type { PopupSummary, PopupTypeId } from "@/lib/types";
 
 const ICON: Record<PopupTypeId, React.ReactNode> = {
   "exit-intent": <DoorOpen className="h-4 w-4" />,
-  entry: <LogIn className="h-4 w-4" />,
+  "abandonment-exit-intent": <DoorOpen className="h-4 w-4" />,
   promotional: <Megaphone className="h-4 w-4" />,
-  countdown: <Timer className="h-4 w-4" />,
   weather: <Cloud className="h-4 w-4" />,
 };
 
 const DESCRIPTION: Record<PopupTypeId, string> = {
   "exit-intent":
     "Fires when visitor tries to leave (mouseleave top on desktop, back button on mobile).",
-  entry:
-    "First-visit welcome popup. Fires 4 seconds after page load for new visitors.",
+  "abandonment-exit-intent":
+    "Triggered when a visitor with items in cart shows abandonment behaviour (frontend preview).",
   promotional:
     "Promote slow-moving products. Fires 25 seconds after page load.",
-  countdown: "Limited-time offer with live timer. Fires 10 seconds after load.",
   weather: "Show based on visitor's local weather (rainy / cold / sunny etc).",
 };
 
@@ -32,7 +31,29 @@ export default function PopupTypes() {
   const [pending, setPending] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    api.getPopups().then(setPopups);
+    api.getPopups().then((real) => {
+      // Splice "Abandonment Exit Intent" right after exit-intent. Real
+      // Firestore values override the placeholder so user toggles persist.
+      const out: PopupSummary[] = [];
+      const realAbandonment = real.find(
+        (p) => p.id === "abandonment-exit-intent",
+      );
+      const abandonment = {
+        ...ABANDONMENT_PLACEHOLDER,
+        ...(realAbandonment ?? {}),
+      };
+      let inserted = false;
+      for (const p of real) {
+        if (p.id === "abandonment-exit-intent") continue;
+        out.push(p);
+        if (p.id === "exit-intent" && !inserted) {
+          out.push(abandonment);
+          inserted = true;
+        }
+      }
+      if (!inserted) out.push(abandonment);
+      setPopups(out);
+    });
   }, []);
 
   const toggle = async (id: string) => {

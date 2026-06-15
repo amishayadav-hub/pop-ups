@@ -5,11 +5,13 @@ import type {
   FunnelStage,
   IntentBreakdown,
   IntentDistribution,
+  PopupAnalyticsMetrics,
   PopupSummary,
   PopupTypeCard,
   Position,
   PositionBenchmark,
   WeatherRule,
+  WeeklyDataPoint,
 } from "./types";
 
 export const MOCK_METRICS: DashboardMetrics = {
@@ -30,28 +32,12 @@ export const MOCK_POPUPS: PopupSummary[] = [
     position: "bottom-left",
   },
   {
-    id: "entry",
-    name: "Entry / new user",
-    status: "active",
-    ctr: 5.2,
-    conversions: 287,
-    position: "center",
-  },
-  {
     id: "promotional",
     name: "Promotional",
     status: "active",
     ctr: 4.1,
     conversions: 198,
     position: "bottom-right",
-  },
-  {
-    id: "countdown",
-    name: "Countdown",
-    status: "active",
-    ctr: 11.6,
-    conversions: 304,
-    position: "top-center",
   },
   {
     id: "weather",
@@ -102,23 +88,10 @@ export const MOCK_POPUP_TYPES: PopupTypeCard[] = [
     enabled: true,
   },
   {
-    id: "entry",
-    name: "Entry / new user",
-    description: "First-visit welcome popup with onboarding hook.",
-    enabled: true,
-  },
-  {
     id: "promotional",
     name: "Promotional",
     description: "Standing promo for featured products.",
     enabled: false,
-  },
-  {
-    id: "countdown",
-    name: "Countdown",
-    description: "Limited-time offer with live timer.",
-    enabled: true,
-    expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000 + 34 * 60 * 1000).toISOString(),
   },
 ];
 
@@ -137,9 +110,8 @@ export const MOCK_INTENT_DISTRIBUTION: IntentDistribution[] = [
 export const MOCK_LOW_MED_CONVERTED = 312;
 
 export const MOCK_CONVERSIONS_BY_TYPE: BarDatum[] = [
-  { label: "Countdown", value: 304 },
   { label: "Exit intent", value: 412 },
-  { label: "Entry", value: 287 },
+  { label: "Abandonment Exit Intent", value: 924 },
   { label: "Promotional", value: 198 },
   { label: "Weather", value: 82 },
 ];
@@ -148,4 +120,55 @@ export const MOCK_FUNNEL: FunnelStage[] = [
   { label: "Impressions", count: 184_293 },
   { label: "Clicks", count: 12_847 },
   { label: "Converted", count: 1_283 },
+];
+
+// ──────────────────────────────────────────────────────────────────
+// Abandonment Exit Intent — placeholder card + analytics (frontend
+// only; backend integration deferred).
+// ──────────────────────────────────────────────────────────────────
+
+export const ABANDONMENT_PLACEHOLDER: PopupSummary = {
+  id: "abandonment-exit-intent",
+  name: "Abandonment Exit Intent",
+  status: "active",
+  ctr: 11.2,
+  conversions: 924,
+  position: "center",
+};
+
+export const ABANDONMENT_POPUP_TYPE: PopupTypeCard = {
+  id: "abandonment-exit-intent",
+  name: "Abandonment Exit Intent",
+  description:
+    "Reminder popup for visitors who added items to cart then tried to leave.",
+  enabled: true,
+};
+
+export const MOCK_ABANDONMENT_METRICS: PopupAnalyticsMetrics = {
+  impressions: 8_234,
+  clicks: 924,
+  ctr: 11.22,
+  ignored: 4_102,
+  closed: 3_208,
+};
+
+export const MOCK_ABANDONMENT_WEEKLY: WeeklyDataPoint[] = [
+  { day: "Mon", count: 1_240 },
+  { day: "Tue", count: 1_110 },
+  { day: "Wed", count: 1_380 },
+  { day: "Thu", count: 1_205 },
+  { day: "Fri", count: 980 },
+  { day: "Sat", count: 1_150 },
+  { day: "Sun", count: 1_169 },
+];
+
+// Fallback for Normal Exit Intent when real Firestore data unavailable.
+export const MOCK_NORMAL_EXIT_WEEKLY: WeeklyDataPoint[] = [
+  { day: "Mon", count: 100 },
+  { day: "Tue", count: 120 },
+  { day: "Wed", count: 80 },
+  { day: "Thu", count: 90 },
+  { day: "Fri", count: 85 },
+  { day: "Sat", count: 130 },
+  { day: "Sun", count: 95 },
 ];

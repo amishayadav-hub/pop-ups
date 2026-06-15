@@ -11,6 +11,12 @@ import {
   type ScoringState,
 } from "./score/engine";
 import {
+  createAbandonmentState,
+  updateScenario,
+  DEFAULT_ABANDONMENT_ENGINE_CONFIG,
+  type AbandonmentState,
+} from "./score/abandonmentEngine";
+import {
   hasPurchasedRecently,
   markPopupShown,
   shouldSkip,
@@ -19,10 +25,31 @@ import {
 } from "./score/gates";
 import {
   attachAllSignals,
+  attachAllAbandonmentSignals,
   fetchCartSnapshot,
   DEFAULT_WEIGHTS,
+  DEFAULT_ABANDONMENT_WEIGHTS,
   type SignalWeights,
+  type AbandonmentSignalWeights,
 } from "./score/signals";
+
+const ABANDONMENT_SHOWN_KEY = "nx_abandonment_shown_session";
+
+function isAbandonmentAlreadyShown(): boolean {
+  try {
+    return sessionStorage.getItem(ABANDONMENT_SHOWN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markAbandonmentShown(): void {
+  try {
+    sessionStorage.setItem(ABANDONMENT_SHOWN_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
 
 /**
  * Reads scoring config from Firestore (if present) and merges with defaults.
@@ -79,6 +106,34 @@ function deriveScoringConfig(
   };
 }
 
+function deriveAbandonmentConfig(
+  remote: Record<string, any> | null,
+): {
+  engine: EngineConfig;
+  weights: AbandonmentSignalWeights;
+} {
+  const r = remote ?? {};
+  const w = (r.weights ?? {}) as Partial<AbandonmentSignalWeights>;
+  return {
+    engine: {
+      ...DEFAULT_ABANDONMENT_ENGINE_CONFIG,
+      threshold:
+        typeof r.threshold === "number"
+          ? r.threshold
+          : DEFAULT_ABANDONMENT_ENGINE_CONFIG.threshold,
+      decayRate:
+        typeof r.decayRate === "number"
+          ? r.decayRate
+          : DEFAULT_ABANDONMENT_ENGINE_CONFIG.decayRate,
+      scoreMax:
+        typeof r.scoreMax === "number"
+          ? r.scoreMax
+          : DEFAULT_ABANDONMENT_ENGINE_CONFIG.scoreMax,
+    },
+    weights: { ...DEFAULT_ABANDONMENT_WEIGHTS, ...w },
+  };
+}
+
 function readBootstrap(): {
   projectId?: string;
   webApiKey?: string;
@@ -131,46 +186,91 @@ async function boot() {
     device,
   });
 
-  // 3. Fetch popup config + cart snapshot + scoring config in parallel
-  const [cfg, cartItemCount, remoteScoring] = await Promise.all([
-    api.getConfig(),
-    fetchCartSnapshot(),
-    api.getScoringConfig(),
-  ]);
+  // 3. Fetch config + cart snapshot + BOTH scoring configs in parallel
+  const [cfg, cartItemCount, remoteScoring, remoteAbandonment] =
+    await Promise.all([
+      api.getConfig(),
+      fetchCartSnapshot(),
+      api.getScoringConfig(),
+      api.getAbandonmentScoringConfig(),
+    ]);
 
   if (!cfg || !cfg.popups?.length) return;
 
-  // 4. Pick the single active popup eligible for this page
-  const popup = cfg.popups.find(
+  // 4. Pick BOTH popups: the page-matching normal popup, and the
+  //    abandonment-exit-intent popup (if active + has banner).
+  const normalPopup = cfg.popups.find(
     (p) =>
+      p.id !== "abandonment-exit-intent" &&
       p.status === "active" &&
       matchesUrl(p.targetUrlPatterns, location.pathname),
   );
-  if (!popup) return;
+  const abandonmentPopup = cfg.popups.find(
+    (p) => p.id === "abandonment-exit-intent" && p.status === "active",
+  );
+  if (!normalPopup && !abandonmentPopup) return;
 
   // 5. Resolve scoring config (Firestore overrides → defaults)
   const scoring = deriveScoringConfig(remoteScoring);
+  const abandonmentCfg = deriveAbandonmentConfig(remoteAbandonment);
 
-  // 6. Initialize unified scoring state
+  const hasConverted = hasPurchasedRecently(scoring.gates.purchaseLockDays);
+
+  // 6. Initialize state for BOTH engines
   const state = createState({
     cartItemCount,
-    hasConverted: hasPurchasedRecently(scoring.gates.purchaseLockDays),
+    hasConverted,
     engineConfig: scoring.engine,
   });
-
-  // 7. Attach all passive behavior listeners with tunable weights
-  attachAllSignals(state, scoring.weights, scoring.cartUiGraceMs);
-
-  // 8. Start the score evaluator (1-sec idle loop)
-  startEvaluator({
-    state,
-    shouldSkip: () => shouldSkip(state, scoring.gates),
-    onFire: (firedState) => {
-      onScoreThresholdReached(popup, api, firedState);
-    },
+  const abState = createAbandonmentState({
+    initialCartItemCount: cartItemCount,
+    hasConverted,
+    engineConfig: abandonmentCfg.engine,
   });
 
-  // 8. Expose debug handle for QA — available on:
+  // 7. Attach all listeners — normal + abandonment
+  attachAllSignals(state, scoring.weights, scoring.cartUiGraceMs);
+  attachAllAbandonmentSignals(abState, abandonmentCfg.weights);
+
+  // 8. Conflict resolution: once abandonment fires, normal stops.
+  let abandonmentFired = false;
+
+  if (abandonmentPopup) {
+    startEvaluator({
+      state: abState,
+      shouldSkip: () => {
+        if (abandonmentFired) return "already_fired";
+        if (state.fired) return "normal_already_fired";
+        if (isAbandonmentAlreadyShown()) return "abandonment_already_shown";
+        if (hasConverted) return "already_converted";
+        return null;
+      },
+      onFire: (firedState) => {
+        abandonmentFired = true;
+        updateScenario(abState);
+        onAbandonmentFired(
+          abandonmentPopup,
+          api,
+          firedState as AbandonmentState,
+        );
+      },
+    });
+  }
+
+  if (normalPopup) {
+    startEvaluator({
+      state,
+      shouldSkip: () => {
+        if (abandonmentFired) return "abandonment_took_priority";
+        return shouldSkip(state, scoring.gates);
+      },
+      onFire: (firedState) => {
+        onScoreThresholdReached(normalPopup, api, firedState);
+      },
+    });
+  }
+
+  // 9. Expose debug handle for QA — available on:
   //   • localhost (dev)
   //   • hostnames containing "test" (our test.html on Hosting)
   //   • *.myshopify.com (Shopify dev/staging stores)
@@ -182,6 +282,7 @@ async function boot() {
     /[?&]nx_debug=1\b/.test(location.search)
   ) {
     (window as any).__nx_state = state;
+    (window as any).__nx_ab_state = abState;
   }
 }
 
@@ -247,6 +348,63 @@ function onScoreThresholdReached(
         popupId: popup.id,
         type: "dismiss",
         dismissReason: reason,
+      },
+      popup.position,
+    );
+  });
+}
+
+function onAbandonmentFired(
+  popup: Popup,
+  api: Api,
+  state: AbandonmentState,
+): void {
+  // Reminder popup: image + X + backdrop dismiss, NO 60s timer.
+  // Banner click redirects to popup.redirectPath. No discount code applied.
+  const shown = showPopup(popup, { withTimer: false });
+  if (!shown) return;
+
+  // Session-once flag distinct from normal popup's flag
+  markAbandonmentShown();
+  markShown(popup.id);
+
+  const scenario = state.lastScenario;
+  const scoreSnapshot = {
+    score: state.score,
+    threshold: state.engineConfig.threshold,
+    timeOnPageMs: Date.now() - state.bornAt,
+    signals: state.signalLog
+      .map((s) => `${s.name}:${s.weight}`)
+      .slice(-20),
+  };
+
+  api.sendEvent(
+    {
+      popupId: popup.id,
+      type: "impression",
+      scenario,
+      ...scoreSnapshot,
+    },
+    popup.position,
+  );
+
+  shown.onCta(() => {
+    api.sendEvent(
+      { popupId: popup.id, type: "click", scenario },
+      popup.position,
+    );
+    // Reminder popup has no discount code — just redirect.
+    const target = popup.redirectPath || "/cart";
+    window.location.assign(target);
+  });
+
+  shown.onClose((reason) => {
+    api.sendEvent(
+      {
+        popupId: popup.id,
+        type: "dismiss",
+        dismissReason: reason,
+        scenario,
       },
       popup.position,
     );

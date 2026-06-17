@@ -63,6 +63,7 @@ function deriveScoringConfig(
   gates: GatesConfig;
   weights: SignalWeights;
   cartUiGraceMs: number;
+  autoDismissSec: number;
 } {
   const r = remote ?? {};
   const w = (r.weights ?? {}) as Partial<SignalWeights>;
@@ -103,6 +104,10 @@ function deriveScoringConfig(
     weights: { ...DEFAULT_WEIGHTS, ...w },
     cartUiGraceMs:
       typeof r.cartUiGraceSec === "number" ? r.cartUiGraceSec * 1000 : 60_000,
+    autoDismissSec:
+      typeof r.autoDismissSec === "number" && r.autoDismissSec > 0
+        ? r.autoDismissSec
+        : 60,
   };
 }
 
@@ -265,7 +270,12 @@ async function boot() {
         return shouldSkip(state, scoring.gates);
       },
       onFire: (firedState) => {
-        onScoreThresholdReached(normalPopup, api, firedState);
+        onScoreThresholdReached(
+          normalPopup,
+          api,
+          firedState,
+          scoring.autoDismissSec,
+        );
       },
     });
   }
@@ -290,9 +300,10 @@ function onScoreThresholdReached(
   popup: Popup,
   api: Api,
   state: ScoringState,
+  autoDismissSec: number,
 ): void {
   // Render the popup — bails out (returns null) if no banner image set.
-  const shown = showPopup(popup);
+  const shown = showPopup(popup, { autoDismissSec });
   if (!shown) {
     // No banner uploaded → don't show empty popup, don't waste impression.
     return;

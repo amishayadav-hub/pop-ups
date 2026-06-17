@@ -47,22 +47,32 @@ export default function AllPopups({ onSelectPopup }: Props) {
 
   useEffect(() => {
     api.getPopups().then((real) => {
-      // Rename "exit-intent" to "Normal Exit Intent" for this view + splice
-      // the Abandonment placeholder right after it.
+      // Use the real abandonment doc if Firestore has one; otherwise fall
+      // back to the placeholder. Merge so display fields are never blank.
+      const realAbandonment = real.find(
+        (p) => p.id === "abandonment-exit-intent",
+      );
+      const abandonment = {
+        ...ABANDONMENT_PLACEHOLDER,
+        ...(realAbandonment ?? {}),
+      };
+
+      // Rebuild the list: rename exit-intent → "Normal Exit Intent" and
+      // place the single abandonment entry right after it. Skip any real
+      // abandonment doc in the loop so it can't be added twice.
       const out: PopupSummary[] = [];
+      let inserted = false;
       for (const p of real) {
+        if (p.id === "abandonment-exit-intent") continue;
         if (p.id === "exit-intent") {
           out.push({ ...p, name: "Normal Exit Intent" });
-          out.push(ABANDONMENT_PLACEHOLDER);
+          out.push(abandonment);
+          inserted = true;
         } else {
           out.push(p);
         }
       }
-      // If the backend doesn't include exit-intent (edge case), still
-      // append the placeholder so the UI surfaces it.
-      if (!out.find((p) => p.id === "abandonment-exit-intent")) {
-        out.push(ABANDONMENT_PLACEHOLDER);
-      }
+      if (!inserted) out.push(abandonment);
       setPopups(out);
     });
   }, []);

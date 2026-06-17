@@ -142,6 +142,7 @@ export type ScoringConfig = {
   powerConverterMin: number;
   cartUiGraceSec: number;
   purchaseLockDays: number;
+  autoDismissSec: number;
   weights: SignalWeights;
 };
 
@@ -205,6 +206,7 @@ export const DEFAULT_SCORING_CONFIG: ScoringConfig = {
   powerConverterMin: 5,
   cartUiGraceSec: 60,
   purchaseLockDays: 30,
+  autoDismissSec: 60,
   weights: {
     popstate: 40,
     mouseleave_top: 30,

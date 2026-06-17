@@ -14,23 +14,26 @@ export function WeeklyBar({ data, label = "Impressions", className }: Props) {
 
   return (
     <div className={cn("w-full", className)}>
-      <div className="flex h-48 items-end gap-2 px-1">
+      <div className="flex h-48 items-stretch gap-2 px-1">
         {data.map((d) => {
           const pct = (d.count / max) * 100;
           return (
             <div
               key={d.day}
-              className="group flex flex-1 flex-col items-center justify-end"
+              className="group flex h-full flex-1 flex-col items-center"
               title={`${d.day}: ${d.count.toLocaleString()} ${label.toLowerCase()}`}
             >
               <div className="mb-1 text-[10px] font-medium tabular-nums text-muted-foreground transition-colors group-hover:text-foreground">
                 {d.count.toLocaleString()}
               </div>
-              <div
-                className="w-full rounded-t-md bg-gradient-to-t from-primary/60 to-primary transition-all group-hover:from-primary group-hover:to-primary/90"
-                style={{ height: `${Math.max(pct, 2)}%` }}
-                aria-label={`${d.day}: ${d.count} ${label.toLowerCase()}`}
-              />
+              {/* flex-1 bar area gives the % height a real box to resolve against */}
+              <div className="flex w-full flex-1 items-end">
+                <div
+                  className="w-full rounded-t-md bg-gradient-to-t from-primary/60 to-primary transition-all group-hover:from-primary group-hover:to-primary/90"
+                  style={{ height: `${Math.max(pct, 2)}%` }}
+                  aria-label={`${d.day}: ${d.count} ${label.toLowerCase()}`}
+                />
+              </div>
             </div>
           );
         })}

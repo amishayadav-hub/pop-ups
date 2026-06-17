@@ -93,6 +93,16 @@ const CORE_FIELDS: Array<{
     max: 300,
     step: 10,
   },
+  {
+    key: "autoDismissSec",
+    label: "Auto-dismiss timer (seconds)",
+    hint: "Popup auto-closes after this many seconds if the visitor doesn't act.",
+    detail:
+      "Controls the countdown timer shown on the popup. When it reaches zero, the popup closes itself (logged as a 'timeout' dismissal). Lower it for a quicker, less intrusive popup; raise it to give visitors more time to read. Applies to the standard exit-intent popup. Default: 60 seconds.",
+    min: 5,
+    max: 120,
+    step: 5,
+  },
 ];
 
 const WEIGHT_GROUPS: Array<{
@@ -262,6 +272,7 @@ function deepEqual(a: ScoringConfig, b: ScoringConfig): boolean {
   if (a.cartUiGraceSec !== b.cartUiGraceSec) return false;
   if (a.purchaseLockDays !== b.purchaseLockDays) return false;
   if (a.scoreMax !== b.scoreMax) return false;
+  if (a.autoDismissSec !== b.autoDismissSec) return false;
   for (const k of Object.keys(a.weights) as Array<keyof ScoringConfig["weights"]>) {
     if (a.weights[k] !== b.weights[k]) return false;
   }

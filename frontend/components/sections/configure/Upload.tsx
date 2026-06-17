@@ -432,10 +432,20 @@ function CdnUrlCard({
     }
   };
 
-  const onClear = () => {
+  const onClear = async () => {
     setUrl("");
     setError(null);
     setStatus("idle");
+    // Also remove the saved banner from Firestore so the preview falls back
+    // to the default image (not just clear the local input box).
+    if (targetPopupId) {
+      try {
+        await api.setPopupBanner(targetPopupId, "");
+        onSaved();
+      } catch {
+        /* ignore — local input is already cleared */
+      }
+    }
   };
 
   const previewOk = !validate(url);

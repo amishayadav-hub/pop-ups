@@ -34,11 +34,6 @@ import type {
   WeeklyDataPoint,
 } from "./types";
 import { DEFAULT_ABANDONMENT_CONFIG, DEFAULT_SCORING_CONFIG } from "./types";
-import {
-  MOCK_ABANDONMENT_METRICS,
-  MOCK_ABANDONMENT_WEEKLY,
-  MOCK_NORMAL_EXIT_WEEKLY,
-} from "./mock-data";
 
 // -----------------------------------------------------------------------------
 // Live-events helpers
@@ -374,11 +369,6 @@ export const firebaseSparkApi: ApiShape = {
         closed++;
       }
     }
-    // Silent fallback to mock for abandonment while SDK ramps up traffic.
-    // Once real impressions start flowing, real numbers take over.
-    if (isAbandonment && impressions === 0) {
-      return MOCK_ABANDONMENT_METRICS;
-    }
     const ctr =
       impressions > 0
         ? Math.round((clicks / impressions) * 100 * 100) / 100
@@ -429,7 +419,6 @@ export const firebaseSparkApi: ApiShape = {
       Sat: 0,
       Sun: 0,
     };
-    let any = false;
     const cutoffMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
     for (const e of events) {
       if (e.popupId !== popupId) continue;
@@ -438,14 +427,8 @@ export const firebaseSparkApi: ApiShape = {
       if (ms === null || ms < cutoffMs) continue;
       const day = DAY_LABELS[new Date(ms).getDay()];
       counts[day]++;
-      any = true;
     }
-    // Silent fallback to mock when no events yet for this popup.
-    if (!any) {
-      return popupId === "abandonment-exit-intent"
-        ? MOCK_ABANDONMENT_WEEKLY
-        : MOCK_NORMAL_EXIT_WEEKLY;
-    }
+    // No mock fallback — return real per-day counts (all zero if no events).
     return [
       { day: "Mon", count: counts.Mon },
       { day: "Tue", count: counts.Tue },

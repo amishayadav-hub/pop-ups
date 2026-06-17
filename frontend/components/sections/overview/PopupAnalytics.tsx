@@ -86,7 +86,7 @@ export default function PopupAnalytics({
             <button
               type="button"
               onClick={handler}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#7a8d3a] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#8a9e3e] focus:outline-none focus:ring-2 focus:ring-[#7a8d3a] focus:ring-offset-2 dark:bg-[#a8bb5e] dark:text-[#1a2a05] dark:hover:bg-[#bccc77] dark:focus:ring-[#a8bb5e]"
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#1F5F57] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#267065] focus:outline-none focus:ring-2 focus:ring-[#1F5F57] focus:ring-offset-2 dark:bg-[#1F5F57] dark:text-white dark:hover:bg-[#267065] dark:focus:ring-[#1F5F57]"
             >
               <Sliders className="h-3.5 w-3.5" />
               Scoring Studio
@@ -134,7 +134,6 @@ export default function PopupAnalytics({
                   ? "…"
                   : "—"
             }
-            hint="Auto-dismissed by timer"
           />
         )}
         <MetricCard

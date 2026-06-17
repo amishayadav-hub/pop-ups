@@ -5,7 +5,7 @@
 import type { DismissReason, Popup } from "./types";
 
 const ROOT_ID = "nx-popup-root";
-const AUTO_DISMISS_SEC = 60;
+const DEFAULT_AUTO_DISMISS_SEC = 60;
 
 function formatCountdown(secondsLeft: number): string {
   const mm = Math.floor(secondsLeft / 60);
@@ -46,6 +46,7 @@ export type ShownPopup = {
 
 export type ShowPopupOptions = {
   withTimer?: boolean; // default true. Reminder popups pass false.
+  autoDismissSec?: number; // countdown duration; default 60s.
 };
 
 export function showPopup(
@@ -56,6 +57,10 @@ export function showPopup(
   if (!popup.bannerUrl) return null;
 
   const withTimer = options.withTimer !== false;
+  const autoDismissSec =
+    typeof options.autoDismissSec === "number" && options.autoDismissSec > 0
+      ? options.autoDismissSec
+      : DEFAULT_AUTO_DISMISS_SEC;
 
   const root = ensureRoot();
 
@@ -67,7 +72,7 @@ export function showPopup(
   const timerHtml = withTimer
     ? `<div class="nx-timer" aria-live="polite" aria-label="Auto-closes in">
          <span class="nx-timer-icon" aria-hidden="true">&#9201;</span>
-         <span class="nx-timer-value">${formatCountdown(AUTO_DISMISS_SEC)}</span>
+         <span class="nx-timer-value">${formatCountdown(autoDismissSec)}</span>
        </div>`
     : "";
 
@@ -140,7 +145,7 @@ export function showPopup(
     const timerValueEl = overlay.querySelector(
       ".nx-timer-value",
     ) as HTMLElement | null;
-    let secondsLeft = AUTO_DISMISS_SEC;
+    let secondsLeft = autoDismissSec;
     countdownIntervalId = window.setInterval(() => {
       secondsLeft -= 1;
       if (timerValueEl) timerValueEl.textContent = formatCountdown(secondsLeft);

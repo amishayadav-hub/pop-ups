@@ -124,6 +124,7 @@ const SCORING_CONFIG = {
   powerConverterMin: 5,
   cartUiGraceSec: 60,
   purchaseLockDays: 30,
+  autoDismissSec: 60,
   weights: {
     popstate: 40,
     mouseleave_top: 30,

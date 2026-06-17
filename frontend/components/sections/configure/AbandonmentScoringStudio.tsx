@@ -273,7 +273,7 @@ export default function AbandonmentScoringStudio({ onBack }: Props) {
       >
         <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-md bg-[#7a8d3a]/15 text-[#5b6d25] dark:bg-[#a8bb5e]/15 dark:text-[#a8bb5e]">
+            <div className="grid h-9 w-9 place-items-center rounded-md bg-[#1F5F57]/15 text-[#1F5F57] dark:bg-[#1F5F57]/25 dark:text-[#7fcabe]">
               <Sliders className="h-4 w-4" />
             </div>
             <div>

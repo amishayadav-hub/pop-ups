@@ -25,14 +25,10 @@ out/
 dist/
 build/
 **/dist/
-# Cloud Functions TypeScript compile output (do NOT match frontend/lib/)
-backend/blaze/functions/lib/
 
 # SDK built artifacts (rebuilt with `npm run build`)
 backend/sdk-spark/public/v1/popup.js
 backend/sdk-spark/public/v1/popup.css
-backend/blaze/sdk/public/v1/popup.js
-backend/blaze/sdk/public/v1/popup.css
 
 # TypeScript incremental cache
 *.tsbuildinfo

@@ -102,14 +102,6 @@ export function LoginScreen() {
               )}
             </Button>
           </form>
-
-          <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-            Admin-only access. New users are created from the CLI via{" "}
-            <code className="rounded bg-muted px-1 py-0.5">
-              npm run create-admin
-            </code>
-            .
-          </p>
         </CardContent>
       </Card>
     </div>

@@ -16,12 +16,9 @@ import { db, storage } from "./firebase";
 import type { ApiShape } from "./mock-api";
 import type {
   AbandonmentScoringConfig,
-  BarDatum,
   City,
   DashboardMetrics,
   FunnelStage,
-  IntentBreakdown,
-  IntentDistribution,
   IntentTier,
   PopupAnalyticsMetrics,
   PopupSummary,
@@ -218,68 +215,6 @@ export const firebaseSparkApi: ApiShape = {
   togglePopupType: async (id, enabled) => {
     await updateDoc(doc(db(), `popupTypes/${id}`), { enabled });
     return { ok: true };
-  },
-
-  getIntentBreakdown: async (): Promise<IntentBreakdown[]> => {
-    const events = await fetchRecentEvents();
-    const counts: Record<IntentTier, number> = { low: 0, medium: 0, high: 0 };
-    for (const e of events) {
-      if (e.type !== "convert") continue;
-      if (e.intent === "low" || e.intent === "medium" || e.intent === "high") {
-        counts[e.intent]++;
-      }
-    }
-    return [
-      { tier: "low", count: counts.low },
-      { tier: "medium", count: counts.medium },
-      { tier: "high", count: counts.high },
-    ];
-  },
-
-  getIntentDistribution: async () => {
-    const events = await fetchRecentEvents();
-    const counts: Record<IntentTier, number> = { low: 0, medium: 0, high: 0 };
-    let total = 0;
-    for (const e of events) {
-      if (e.type !== "convert") continue;
-      if (e.intent === "low" || e.intent === "medium" || e.intent === "high") {
-        counts[e.intent]++;
-        total++;
-      }
-    }
-    const pct = (n: number) =>
-      total > 0 ? Math.round((n / total) * 100 * 100) / 100 : 0;
-    const distribution: IntentDistribution[] = [
-      { tier: "low", percent: pct(counts.low) },
-      { tier: "medium", percent: pct(counts.medium) },
-      { tier: "high", percent: pct(counts.high) },
-    ];
-    return {
-      distribution,
-      lowMedConverted: counts.low + counts.medium,
-    };
-  },
-
-  getConversionsByType: async (): Promise<BarDatum[]> => {
-    const [events, popups] = await Promise.all([
-      fetchRecentEvents(),
-      listOrdered<PopupSummary>("popups"),
-    ]);
-    const nameById = new Map<string, string>();
-    for (const p of popups) nameById.set(p.id, p.name);
-
-    const counts = new Map<string, number>();
-    for (const e of events) {
-      if (e.type !== "convert") continue;
-      const key = e.popupId ?? "unknown";
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-    const result: BarDatum[] = [];
-    for (const [popupId, value] of counts) {
-      result.push({ label: nameById.get(popupId) ?? popupId, value });
-    }
-    result.sort((a, b) => b.value - a.value);
-    return result;
   },
 
   getFunnel: async (): Promise<FunnelStage[]> => {

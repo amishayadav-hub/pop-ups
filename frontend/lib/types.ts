@@ -86,11 +86,6 @@ export type City = {
   enabled: boolean;
 };
 
-export type IntentDistribution = {
-  tier: IntentTier;
-  percent: number;
-};
-
 export type WeatherRule = {
   id: string;
   name: string;
@@ -102,16 +97,6 @@ export type PopupTypeCard = {
   name: string;
   description: string;
   enabled: boolean;
-};
-
-export type IntentBreakdown = {
-  tier: IntentTier;
-  count: number;
-};
-
-export type BarDatum = {
-  label: string;
-  value: number;
 };
 
 export type FunnelStage = {

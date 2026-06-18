@@ -34,16 +34,6 @@ export function getSessionId(): string {
   }
 }
 
-export function isFirstVisit(): boolean {
-  try {
-    const seen = localStorage.getItem(FIRST_VISIT_KEY);
-    if (!seen) return true;
-    return Date.now() - Number(seen) < 60_000;
-  } catch {
-    return false;
-  }
-}
-
 export function isMobile(): boolean {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(max-width: 768px)").matches || /Mobi|Android/i.test(navigator.userAgent);

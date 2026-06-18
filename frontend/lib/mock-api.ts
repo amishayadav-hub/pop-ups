@@ -1,11 +1,8 @@
 import type {
   AbandonmentScoringConfig,
-  BarDatum,
   City,
   DashboardMetrics,
   FunnelStage,
-  IntentBreakdown,
-  IntentDistribution,
   PopupAnalyticsMetrics,
   PopupSummary,
   PopupTypeCard,
@@ -22,11 +19,7 @@ import {
   MOCK_ABANDONMENT_METRICS,
   MOCK_ABANDONMENT_WEEKLY,
   MOCK_CITIES,
-  MOCK_CONVERSIONS_BY_TYPE,
   MOCK_FUNNEL,
-  MOCK_INTENT_BREAKDOWN,
-  MOCK_INTENT_DISTRIBUTION,
-  MOCK_LOW_MED_CONVERTED,
   MOCK_METRICS,
   MOCK_NORMAL_EXIT_WEEKLY,
   MOCK_POPUPS,
@@ -55,13 +48,6 @@ export const mockApi = {
   getPopupTypes: (): Promise<PopupTypeCard[]> => wait(MOCK_POPUP_TYPES),
   togglePopupType: (_id: string, _enabled: boolean) => wait({ ok: true as const }, 200),
 
-  getIntentBreakdown: (): Promise<IntentBreakdown[]> => wait(MOCK_INTENT_BREAKDOWN),
-  getIntentDistribution: () =>
-    wait({
-      distribution: MOCK_INTENT_DISTRIBUTION,
-      lowMedConverted: MOCK_LOW_MED_CONVERTED,
-    }),
-  getConversionsByType: (): Promise<BarDatum[]> => wait(MOCK_CONVERSIONS_BY_TYPE),
   getFunnel: (): Promise<FunnelStage[]> => wait(MOCK_FUNNEL),
 
   uploadBanner: (_file: File) =>

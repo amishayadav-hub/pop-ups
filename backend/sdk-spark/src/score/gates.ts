@@ -9,10 +9,6 @@ export const DEFAULT_BOUNCER_THRESHOLD_MS = 9_000;
 export const DEFAULT_POWER_CONVERTER_MS = 5 * 60 * 1000;
 export const DEFAULT_PURCHASE_LOCK_DAYS = 30;
 
-// Legacy named exports for back-compat
-export const BOUNCER_THRESHOLD_MS = DEFAULT_BOUNCER_THRESHOLD_MS;
-export const POWER_CONVERTER_MS = DEFAULT_POWER_CONVERTER_MS;
-
 export type GatesConfig = {
   bouncerThresholdMs: number;
   powerConverterMs: number;

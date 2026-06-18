@@ -18,14 +18,6 @@ export const DEFAULT_EVAL_INTERVAL_MS = 1_000;
 export const DEFAULT_SCORE_MIN = 0;
 export const DEFAULT_SCORE_MAX = 120;
 
-// Legacy named exports — kept for any external code that still imports them.
-export const THRESHOLD = DEFAULT_THRESHOLD;
-export const DECAY_RATE = DEFAULT_DECAY_RATE;
-export const DECAY_INTERVAL_MS = DEFAULT_DECAY_INTERVAL_MS;
-export const EVAL_INTERVAL_MS = DEFAULT_EVAL_INTERVAL_MS;
-export const SCORE_MIN = DEFAULT_SCORE_MIN;
-export const SCORE_MAX = DEFAULT_SCORE_MAX;
-
 export type SignalLogEntry = {
   name: string;
   weight: number;

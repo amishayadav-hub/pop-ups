@@ -1,10 +1,7 @@
 import type {
-  BarDatum,
   City,
   DashboardMetrics,
   FunnelStage,
-  IntentBreakdown,
-  IntentDistribution,
   PopupAnalyticsMetrics,
   PopupSummary,
   PopupTypeCard,
@@ -93,27 +90,6 @@ export const MOCK_POPUP_TYPES: PopupTypeCard[] = [
     description: "Standing promo for featured products.",
     enabled: false,
   },
-];
-
-export const MOCK_INTENT_BREAKDOWN: IntentBreakdown[] = [
-  { tier: "low", count: 412 },
-  { tier: "medium", count: 587 },
-  { tier: "high", count: 284 },
-];
-
-export const MOCK_INTENT_DISTRIBUTION: IntentDistribution[] = [
-  { tier: "high", percent: 71 },
-  { tier: "medium", percent: 46 },
-  { tier: "low", percent: 18 },
-];
-
-export const MOCK_LOW_MED_CONVERTED = 312;
-
-export const MOCK_CONVERSIONS_BY_TYPE: BarDatum[] = [
-  { label: "Exit intent", value: 412 },
-  { label: "Abandonment Exit Intent", value: 924 },
-  { label: "Promotional", value: 198 },
-  { label: "Weather", value: 82 },
 ];
 
 export const MOCK_FUNNEL: FunnelStage[] = [

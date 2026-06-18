@@ -80,6 +80,9 @@ export const mockApi = {
   setPopupPosition: (_popupId: string, _position: Position) =>
     wait({ ok: true as const }, 200),
 
+  setPopupRedirect: (_popupId: string, _redirectPath: string) =>
+    wait({ ok: true as const }, 200),
+
   setPopupStatus: (_popupId: string, _status: "active" | "paused") =>
     wait({ ok: true as const }, 200),
 

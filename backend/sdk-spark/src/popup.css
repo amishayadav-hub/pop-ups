@@ -45,7 +45,8 @@
 .nx-card {
   position: relative;
   width: 100%;
-  max-width: 380px;
+  /* !important so a host Shopify theme's CSS can't widen our popup */
+  max-width: 300px !important;
   max-height: calc(100vh - 32px);
   background: transparent;
   border-radius: 14px;
@@ -133,10 +134,12 @@
 
 .nx-banner {
   display: block;
-  width: 100%;
-  height: auto;
+  /* !important so the host theme's img rules can't resize/stretch it */
+  width: 100% !important;
+  height: auto !important;
   max-height: calc(100vh - 32px);
-  object-fit: cover;
+  /* contain = full image always visible, never cropped */
+  object-fit: contain;
   border-radius: 14px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

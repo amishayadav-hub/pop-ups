@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ImagePlus, Link2, Monitor, RotateCcw, Smartphone } from "lucide-react";
+import {
+  ImagePlus,
+  Link2,
+  Monitor,
+  RotateCcw,
+  Smartphone,
+  ExternalLink,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -17,6 +24,9 @@ import type {
   PopupTypeCard,
   Position,
   PositionBenchmark,
+  RedirectKind,
+  ShopifyCatalog,
+  ShopifyCatalogItem,
 } from "@/lib/types";
 
 // No file format or size restriction — accept any image.
@@ -144,6 +154,12 @@ export default function Upload() {
         onReset={refreshPopups}
       />
 
+      <RedirectCard
+        targetPopupId={targetPopupId}
+        currentRedirect={popup?.redirectPath}
+        onSaved={refreshPopups}
+      />
+
       <PositionSection
         targetPopupId={targetPopupId}
         currentPosition={popup?.position}
@@ -151,6 +167,257 @@ export default function Upload() {
         onSaved={refreshPopups}
       />
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Redirect destination — where the banner click sends the visitor           */
+/* -------------------------------------------------------------------------- */
+
+function parseRedirect(path: string | undefined): {
+  kind: RedirectKind;
+  handle: string;
+  custom: string;
+} {
+  const p = (path ?? "").trim();
+  if (p.startsWith("/collections/"))
+    return { kind: "collection", handle: p.slice("/collections/".length), custom: "" };
+  if (p.startsWith("/products/"))
+    return { kind: "product", handle: p.slice("/products/".length), custom: "" };
+  if (p.startsWith("/pages/"))
+    return { kind: "page", handle: p.slice("/pages/".length), custom: "" };
+  return { kind: "custom", handle: "", custom: p };
+}
+
+function buildRedirect(
+  kind: RedirectKind,
+  handle: string,
+  custom: string,
+): string {
+  if (kind === "collection") return handle ? `/collections/${handle}` : "";
+  if (kind === "product") return handle ? `/products/${handle}` : "";
+  if (kind === "page") return handle ? `/pages/${handle}` : "";
+  return custom.trim();
+}
+
+const REDIRECT_KINDS: Array<{ value: RedirectKind; label: string }> = [
+  { value: "collection", label: "Collection" },
+  { value: "product", label: "Product" },
+  { value: "page", label: "Page" },
+  { value: "custom", label: "Custom URL" },
+];
+
+function RedirectCard({
+  targetPopupId,
+  currentRedirect,
+  onSaved,
+}: {
+  targetPopupId: string;
+  currentRedirect: string | undefined;
+  onSaved: () => void;
+}) {
+  const [catalog, setCatalog] = useState<ShopifyCatalog | null>(null);
+  const [catalogError, setCatalogError] = useState(false);
+  const [kind, setKind] = useState<RedirectKind>("collection");
+  const [handle, setHandle] = useState("");
+  const [custom, setCustom] = useState("");
+  const [status, setStatus] = useState<Status>("idle");
+
+  // Load the live product/collection lists once.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/shopify-catalog")
+      .then((r) => r.json())
+      .then((data: ShopifyCatalog) => {
+        if (cancelled) return;
+        if (
+          (data.products?.length ?? 0) === 0 &&
+          (data.collections?.length ?? 0) === 0
+        ) {
+          setCatalogError(true);
+        }
+        setCatalog(data);
+      })
+      .catch(() => !cancelled && setCatalogError(true));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Reset form to the popup's saved redirect whenever the target changes.
+  useEffect(() => {
+    const parsed = parseRedirect(currentRedirect);
+    setKind(parsed.kind);
+    setHandle(parsed.handle);
+    setCustom(parsed.custom);
+    setStatus("idle");
+  }, [currentRedirect, targetPopupId]);
+
+  const finalPath = buildRedirect(kind, handle, custom);
+  const list: ShopifyCatalogItem[] =
+    kind === "collection"
+      ? (catalog?.collections ?? [])
+      : kind === "product"
+        ? (catalog?.products ?? [])
+        : [];
+
+  const onSave = async () => {
+    if (!targetPopupId || !finalPath) return;
+    setStatus("saving");
+    try {
+      await api.setPopupRedirect(targetPopupId, finalPath);
+      setStatus("submitted");
+      onSaved();
+    } catch {
+      setStatus("idle");
+    }
+  };
+
+  const isDropdown = kind === "collection" || kind === "product";
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+        <div>
+          <div className="flex items-center gap-2">
+            <ExternalLink className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold">
+              Redirect destination
+            </CardTitle>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Where the visitor lands when they click the banner. Collections &amp;
+            products load from your store; pages &amp; custom URLs are typed.
+          </p>
+        </div>
+        {status === "submitted" && (
+          <Badge
+            variant="secondary"
+            className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+          >
+            Saved
+          </Badge>
+        )}
+      </CardHeader>
+
+      <Separator />
+
+      <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
+        {/* Type */}
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">
+            Type
+          </label>
+          <select
+            value={kind}
+            onChange={(e) => {
+              setKind(e.target.value as RedirectKind);
+              setHandle("");
+              setStatus("idle");
+            }}
+            disabled={!targetPopupId}
+            className="mt-1.5 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+          >
+            {REDIRECT_KINDS.map((k) => (
+              <option key={k.value} value={k.value}>
+                {k.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Value — dropdown for collection/product, text for page/custom */}
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">
+            {kind === "collection"
+              ? "Collection"
+              : kind === "product"
+                ? "Product"
+                : kind === "page"
+                  ? "Page handle"
+                  : "URL or path"}
+          </label>
+
+          {isDropdown ? (
+            catalogError ? (
+              <input
+                type="text"
+                value={handle}
+                onChange={(e) => {
+                  setHandle(e.target.value);
+                  setStatus("idle");
+                }}
+                placeholder="type-handle-manually"
+                disabled={!targetPopupId}
+                className="mt-1.5 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+              />
+            ) : (
+              <select
+                value={handle}
+                onChange={(e) => {
+                  setHandle(e.target.value);
+                  setStatus("idle");
+                }}
+                disabled={!targetPopupId || !catalog}
+                className="mt-1.5 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+              >
+                <option value="">
+                  {catalog ? `Select a ${kind}…` : "Loading…"}
+                </option>
+                {list.map((item) => (
+                  <option key={item.handle} value={item.handle}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
+            )
+          ) : (
+            <input
+              type="text"
+              value={kind === "page" ? handle : custom}
+              onChange={(e) => {
+                if (kind === "page") setHandle(e.target.value);
+                else setCustom(e.target.value);
+                setStatus("idle");
+              }}
+              placeholder={kind === "page" ? "about-us" : "/cart"}
+              disabled={!targetPopupId}
+              className="mt-1.5 w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+            />
+          )}
+        </div>
+
+        {/* Live preview of final path */}
+        <div className="sm:col-span-2">
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
+            <span className="text-muted-foreground">Banner links to: </span>
+            <span className="font-medium tabular-nums">
+              {finalPath || <span className="text-muted-foreground">—</span>}
+            </span>
+          </div>
+          {catalogError && isDropdown && (
+            <p className="mt-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+              Couldn&apos;t load the store list — type the handle manually for now.
+            </p>
+          )}
+        </div>
+      </CardContent>
+
+      <Separator />
+      <div className="flex items-center justify-end gap-2 p-4">
+        <Button
+          size="sm"
+          onClick={onSave}
+          disabled={!targetPopupId || !finalPath || status === "saving"}
+        >
+          {status === "saving"
+            ? "Saving…"
+            : status === "submitted"
+              ? "Saved"
+              : "Save"}
+        </Button>
+      </div>
+    </Card>
   );
 }
 

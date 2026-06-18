@@ -325,6 +325,15 @@ export const firebaseSparkApi: ApiShape = {
     return { ok: true as const };
   },
 
+  setPopupRedirect: async (popupId: string, redirectPath: string) => {
+    await setDoc(
+      doc(db(), `popups/${popupId}`),
+      { id: popupId, redirectPath },
+      { merge: true },
+    );
+    return { ok: true as const };
+  },
+
   setPopupStatus: async (popupId: string, status: "active" | "paused") => {
     await updateDoc(doc(db(), `popups/${popupId}`), { status });
     return { ok: true as const };

@@ -67,6 +67,18 @@ export type PositionBenchmark = {
   ctr: number;
 };
 
+// Redirect destination picker (Upload section). Collection/Product are
+// chosen from a live dropdown; page/custom are typed manually.
+export type RedirectKind = "collection" | "product" | "page" | "custom";
+
+export type ShopifyCatalogItem = { handle: string; title: string };
+
+export type ShopifyCatalog = {
+  domain: string;
+  products: ShopifyCatalogItem[];
+  collections: ShopifyCatalogItem[];
+};
+
 export type City = {
   code: string;
   name: string;
